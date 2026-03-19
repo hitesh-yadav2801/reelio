@@ -38,7 +38,7 @@ class SignupView extends StatelessWidget {
             );
           }
           if (state.status == SignupStatus.success) {
-            context.go('/'); // Or wherever the landing page is
+            context.go('/app/feed');
           }
         },
         child: SafeArea(
