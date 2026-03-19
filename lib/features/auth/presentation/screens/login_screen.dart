@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:reelio/core/di/injection.dart';
 import 'package:reelio/core/theme/app_colors.dart';
@@ -101,7 +102,11 @@ class LoginView extends StatelessWidget {
                 // Google Sign In
                 OutlinedButton.icon(
                   onPressed: () => context.read<LoginCubit>().logInWithGoogle(),
-                  icon: const Icon(Icons.g_mobiledata, size: 28),
+                  icon: SvgPicture.asset(
+                    'assets/icons/google.svg',
+                    height: 24,
+                    width: 24,
+                  ),
                   label: const Text('Continue with Google'),
                 ),
 
