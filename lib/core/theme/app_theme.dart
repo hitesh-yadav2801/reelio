@@ -11,7 +11,6 @@ import 'package:reelio/core/theme/app_typography.dart';
 abstract final class AppTheme {
   static ThemeData get light {
     return ThemeData(
-
       scaffoldBackgroundColor: AppColors.colorBackground,
 
       // Color scheme
@@ -34,9 +33,7 @@ abstract final class AppTheme {
         centerTitle: false,
         titleTextStyle: AppTypography.heading2,
         systemOverlayStyle: SystemUiOverlayStyle.dark,
-        shape: const Border(
-          bottom: BorderSide(color: AppColors.colorDivider),
-        ),
+        shape: const Border(bottom: BorderSide(color: AppColors.colorDivider)),
       ),
 
       // Bottom Navigation
@@ -80,10 +77,7 @@ abstract final class AppTheme {
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppSpacing.radiusSmall),
-          borderSide: const BorderSide(
-            color: AppColors.colorError,
-            width: 1.5,
-          ),
+          borderSide: const BorderSide(color: AppColors.colorError, width: 1.5),
         ),
         hintStyle: AppTypography.bodyLarge.copyWith(
           color: AppColors.colorTextDisabled,
@@ -175,7 +169,6 @@ abstract final class AppTheme {
       progressIndicatorTheme: const ProgressIndicatorThemeData(
         color: AppColors.colorAccentPrimary,
       ),
-
     );
   }
 }
