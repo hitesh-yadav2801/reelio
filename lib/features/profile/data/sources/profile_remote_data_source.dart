@@ -34,6 +34,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
       final seed = <String, dynamic>{
         'email': user.email ?? '',
         'displayName': user.displayName ?? 'Reelio User',
+        'username': '',
         'photoUrl': user.photoURL,
         'bio': '',
         'reelsCount': 0,

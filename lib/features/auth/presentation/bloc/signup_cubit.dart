@@ -12,23 +12,51 @@ class SignupCubit extends Cubit<SignupState> {
   final SignUpWithEmailUseCase _signUpWithEmailUseCase;
 
   void emailChanged(String value) {
-    emit(state.copyWith(email: value, status: SignupStatus.initial));
+    emit(
+      state.copyWith(
+        email: value,
+        status: SignupStatus.initial,
+        clearError: true,
+      ),
+    );
   }
 
   void passwordChanged(String value) {
-    emit(state.copyWith(password: value, status: SignupStatus.initial));
+    emit(
+      state.copyWith(
+        password: value,
+        status: SignupStatus.initial,
+        clearError: true,
+      ),
+    );
+  }
+
+  void confirmPasswordChanged(String value) {
+    emit(
+      state.copyWith(
+        confirmPassword: value,
+        status: SignupStatus.initial,
+        clearError: true,
+      ),
+    );
   }
 
   void nameChanged(String value) {
-    emit(state.copyWith(name: value, status: SignupStatus.initial));
+    emit(
+      state.copyWith(
+        name: value,
+        status: SignupStatus.initial,
+        clearError: true,
+      ),
+    );
   }
 
   Future<void> signUp() async {
-    if (state.email.isEmpty || state.password.isEmpty || state.name.isEmpty) {
+    if (!state.canSubmit) {
       return;
     }
 
-    emit(state.copyWith(status: SignupStatus.submitting));
+    emit(state.copyWith(status: SignupStatus.submitting, clearError: true));
 
     final result = await _signUpWithEmailUseCase(
       SignUpWithEmailParams(

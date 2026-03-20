@@ -6,6 +6,7 @@ class ProfileUserModel extends ProfileUser {
     required super.uid,
     required super.email,
     required super.displayName,
+    super.username,
     super.photoUrl,
     super.bio,
     super.reelsCount,
@@ -29,11 +30,12 @@ class ProfileUserModel extends ProfileUser {
           data['displayName'] as String? ??
           firebaseUser.displayName ??
           'Reelio User',
+      username: data['username'] as String? ?? '',
       photoUrl: data['photoUrl'] as String? ?? firebaseUser.photoURL,
       bio: data['bio'] as String? ?? '',
-      reelsCount: data['reelsCount'] as int? ?? 0,
-      followerCount: data['followerCount'] as int? ?? 0,
-      followingCount: data['followingCount'] as int? ?? 0,
+      reelsCount: (data['reelsCount'] as num?)?.toInt() ?? 0,
+      followerCount: (data['followerCount'] as num?)?.toInt() ?? 0,
+      followingCount: (data['followingCount'] as num?)?.toInt() ?? 0,
       canChangePassword: hasPasswordProvider,
     );
   }
@@ -42,6 +44,7 @@ class ProfileUserModel extends ProfileUser {
     return {
       'email': email,
       'displayName': displayName,
+      'username': username,
       'photoUrl': photoUrl,
       'bio': bio,
       'reelsCount': reelsCount,
