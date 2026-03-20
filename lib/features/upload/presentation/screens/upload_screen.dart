@@ -24,17 +24,8 @@ class UploadScreen extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.space16),
               Text(
-                'Upload flow placeholder',
+                'Create your reel',
                 style: AppTypography.heading2,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: AppSpacing.space8),
-              Text(
-                'Bottom navigation is set. Full video picking and upload '
-                'progress will be added in the upload phase.',
-                style: AppTypography.bodyMedium.copyWith(
-                  color: AppColors.colorTextSecondary,
-                ),
                 textAlign: TextAlign.center,
               ),
             ],
