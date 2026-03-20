@@ -30,7 +30,12 @@ class LoginView extends StatelessWidget {
         listener: (context, state) {
           if (state.status == LoginStatus.error) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.errorMessage ?? 'Login failed')),
+              SnackBar(
+                content: Text(
+                  state.errorMessage ??
+                      'Unable to sign in right now. Please try again.',
+                ),
+              ),
             );
           }
         },
