@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -37,24 +39,53 @@ class RemoteAuthDataSourceImpl implements RemoteAuthDataSource {
 
   @override
   Stream<UserModel?> get userChanges {
-    return _firebaseAuth.authStateChanges().asyncExpand((firebaseUser) {
-      if (firebaseUser == null) {
-        return Stream<UserModel?>.value(null);
-      }
+    late final StreamController<UserModel?> controller;
+    StreamSubscription<User?>? authSubscription;
+    StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
+    profileSubscription;
 
-      return _usersCollection.doc(firebaseUser.uid).snapshots().map((doc) {
-        if (!doc.exists) {
-          return UserModel(
-            uid: firebaseUser.uid,
-            email: firebaseUser.email ?? '',
-            displayName: firebaseUser.displayName,
-            photoUrl: firebaseUser.photoURL,
-          );
-        }
+    controller = StreamController<UserModel?>(
+      onListen: () {
+        authSubscription = _firebaseAuth.authStateChanges().listen((
+          firebaseUser,
+        ) {
+          profileSubscription?.cancel();
+          profileSubscription = null;
 
-        return UserModel.fromFirestore(doc, firebaseUser: firebaseUser);
-      });
-    });
+          if (firebaseUser == null) {
+            controller.add(null);
+            return;
+          }
+
+          profileSubscription = _usersCollection
+              .doc(firebaseUser.uid)
+              .snapshots()
+              .listen((doc) {
+                if (!doc.exists) {
+                  controller.add(
+                    UserModel(
+                      uid: firebaseUser.uid,
+                      email: firebaseUser.email ?? '',
+                      displayName: firebaseUser.displayName,
+                      photoUrl: firebaseUser.photoURL,
+                    ),
+                  );
+                  return;
+                }
+
+                controller.add(
+                  UserModel.fromFirestore(doc, firebaseUser: firebaseUser),
+                );
+              }, onError: controller.addError);
+        }, onError: controller.addError);
+      },
+      onCancel: () async {
+        await profileSubscription?.cancel();
+        await authSubscription?.cancel();
+      },
+    );
+
+    return controller.stream;
   }
 
   @override
