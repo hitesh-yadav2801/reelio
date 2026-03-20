@@ -14,10 +14,6 @@ abstract class RemoteAuthDataSource {
   Future<void> signOut();
   Future<bool> isUsernameAvailable(String username, {String? currentUid});
   Future<void> createUserProfile(UserModel user);
-  Future<void> createUserProfileWithUsername({
-    required UserModel user,
-    required String username,
-  });
   Future<void> setUsername({required String uid, required String username});
   Future<UserModel> getUserProfile(String uid);
 }
@@ -126,42 +122,6 @@ class RemoteAuthDataSourceImpl implements RemoteAuthDataSource {
   @override
   Future<void> createUserProfile(UserModel user) async {
     await _usersCollection.doc(user.uid).set(user.toFirestore());
-  }
-
-  @override
-  Future<void> createUserProfileWithUsername({
-    required UserModel user,
-    required String username,
-  }) async {
-    final userRef = _usersCollection.doc(user.uid);
-    final usernameRef = _usernamesCollection.doc(username);
-
-    await _firestore.runTransaction((transaction) async {
-      final usernameSnapshot = await transaction.get(usernameRef);
-      if (usernameSnapshot.exists) {
-        final data = usernameSnapshot.data() ?? <String, dynamic>{};
-        final ownerUid = data['uid'] as String?;
-        if (ownerUid != user.uid) {
-          throw FirebaseException(
-            plugin: 'cloud_firestore',
-            code: 'username-taken',
-            message: 'Username is already taken.',
-          );
-        }
-      }
-
-      transaction
-        ..set(userRef, {
-          ...user.toFirestore(),
-          'username': username,
-          'updatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true))
-        ..set(usernameRef, {
-          'uid': user.uid,
-          'updatedAt': FieldValue.serverTimestamp(),
-          'createdAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
-    });
   }
 
   @override

@@ -9,16 +9,14 @@ class SignUpWithEmailParams extends Equatable {
     required this.email,
     required this.password,
     required this.fullName,
-    required this.username,
   });
 
   final String email;
   final String password;
   final String fullName;
-  final String username;
 
   @override
-  List<Object?> get props => [email, password, fullName, username];
+  List<Object?> get props => [email, password, fullName];
 }
 
 @lazySingleton
@@ -34,7 +32,6 @@ class SignUpWithEmailUseCase
       email: params.email,
       password: params.password,
       fullName: params.fullName,
-      username: params.username,
     );
   }
 }

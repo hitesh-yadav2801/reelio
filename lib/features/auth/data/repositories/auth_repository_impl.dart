@@ -25,14 +25,7 @@ class AuthRepositoryImpl implements AuthRepository {
     required String email,
     required String password,
     required String fullName,
-    required String username,
   }) async {
-    final normalizedUsername = UsernameValidator.normalize(username);
-    final usernameError = UsernameValidator.validationError(normalizedUsername);
-    if (usernameError != null) {
-      return left(AuthFailure(usernameError));
-    }
-
     User? createdUser;
 
     try {
@@ -51,15 +44,11 @@ class AuthRepositoryImpl implements AuthRepository {
       final userModel = UserModel(
         uid: firebaseUser.uid,
         email: email,
-        username: normalizedUsername,
         displayName: fullName,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
-      await _remoteDataSource.createUserProfileWithUsername(
-        user: userModel,
-        username: normalizedUsername,
-      );
+      await _remoteDataSource.createUserProfile(userModel);
       return right(unit);
     } on FirebaseAuthException catch (error) {
       _logAuthException('signUpWithEmail', error);
@@ -376,7 +365,7 @@ class AuthRepositoryImpl implements AuthRepository {
       case 'email-already-in-use':
         return 'An account with this email already exists.';
       case 'weak-password':
-        return 'Use a stronger password with at least 8 characters.';
+        return 'Use a stronger password with at least 6 characters.';
       case 'operation-not-allowed':
         return 'This sign-in method is currently unavailable.';
       case 'too-many-requests':

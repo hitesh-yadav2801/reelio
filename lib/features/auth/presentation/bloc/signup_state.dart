@@ -5,20 +5,16 @@ enum SignupStatus { initial, submitting, success, error }
 class SignupState extends Equatable {
   const SignupState({
     this.name = '',
-    this.username = '',
     this.email = '',
     this.password = '',
-    this.usernameStatus = UsernameCheckStatus.initial,
-    this.usernameMessage,
+    this.confirmPassword = '',
     this.status = SignupStatus.initial,
     this.errorMessage,
   });
   final String name;
-  final String username;
   final String email;
   final String password;
-  final UsernameCheckStatus usernameStatus;
-  final String? usernameMessage;
+  final String confirmPassword;
   final SignupStatus status;
   final String? errorMessage;
 
@@ -27,32 +23,26 @@ class SignupState extends Equatable {
   bool get canSubmit {
     return name.trim().isNotEmpty &&
         email.trim().isNotEmpty &&
-        password.isNotEmpty &&
-        usernameStatus == UsernameCheckStatus.available &&
+        password.length >= 6 &&
+        confirmPassword.isNotEmpty &&
+        password == confirmPassword &&
         !isSubmitting;
   }
 
   SignupState copyWith({
     String? name,
-    String? username,
     String? email,
     String? password,
-    UsernameCheckStatus? usernameStatus,
-    String? usernameMessage,
+    String? confirmPassword,
     SignupStatus? status,
     String? errorMessage,
     bool clearError = false,
-    bool clearUsernameMessage = false,
   }) {
     return SignupState(
       name: name ?? this.name,
-      username: username ?? this.username,
       email: email ?? this.email,
       password: password ?? this.password,
-      usernameStatus: usernameStatus ?? this.usernameStatus,
-      usernameMessage: clearUsernameMessage
-          ? null
-          : (usernameMessage ?? this.usernameMessage),
+      confirmPassword: confirmPassword ?? this.confirmPassword,
       status: status ?? this.status,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
@@ -61,11 +51,9 @@ class SignupState extends Equatable {
   @override
   List<Object?> get props => [
     name,
-    username,
     email,
     password,
-    usernameStatus,
-    usernameMessage,
+    confirmPassword,
     status,
     errorMessage,
   ];

@@ -1,25 +1,15 @@
-import 'dart:async';
-
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
-import 'package:reelio/core/validation/username_validator.dart';
-import 'package:reelio/features/auth/domain/usecases/check_username_availability_usecase.dart';
 import 'package:reelio/features/auth/domain/usecases/sign_up_with_email_usecase.dart';
-import 'package:reelio/features/auth/presentation/models/username_check_status.dart';
 
 part 'signup_state.dart';
 
 @injectable
 class SignupCubit extends Cubit<SignupState> {
-  SignupCubit(this._signUpWithEmailUseCase, this._checkUsernameUseCase)
-    : super(const SignupState());
+  SignupCubit(this._signUpWithEmailUseCase) : super(const SignupState());
 
   final SignUpWithEmailUseCase _signUpWithEmailUseCase;
-  final CheckUsernameAvailabilityUseCase _checkUsernameUseCase;
-  Timer? _usernameDebounce;
-
-  static const Duration _usernameCheckDelay = Duration(milliseconds: 350);
 
   void emailChanged(String value) {
     emit(
@@ -41,6 +31,16 @@ class SignupCubit extends Cubit<SignupState> {
     );
   }
 
+  void confirmPasswordChanged(String value) {
+    emit(
+      state.copyWith(
+        confirmPassword: value,
+        status: SignupStatus.initial,
+        clearError: true,
+      ),
+    );
+  }
+
   void nameChanged(String value) {
     emit(
       state.copyWith(
@@ -51,99 +51,18 @@ class SignupCubit extends Cubit<SignupState> {
     );
   }
 
-  void usernameChanged(String value) {
-    final normalizedUsername = UsernameValidator.normalize(value);
-    _usernameDebounce?.cancel();
-
-    if (normalizedUsername.isEmpty) {
-      emit(
-        state.copyWith(
-          username: normalizedUsername,
-          usernameStatus: UsernameCheckStatus.initial,
-          status: SignupStatus.initial,
-          clearError: true,
-          clearUsernameMessage: true,
-        ),
-      );
-      return;
-    }
-
-    final validationError = UsernameValidator.validationError(
-      normalizedUsername,
-    );
-
-    if (validationError != null) {
-      emit(
-        state.copyWith(
-          username: normalizedUsername,
-          usernameStatus: UsernameCheckStatus.invalid,
-          usernameMessage: validationError,
-          status: SignupStatus.initial,
-          clearError: true,
-        ),
-      );
-      return;
-    }
-
-    emit(
-      state.copyWith(
-        username: normalizedUsername,
-        usernameStatus: UsernameCheckStatus.checking,
-        status: SignupStatus.initial,
-        clearError: true,
-        clearUsernameMessage: true,
-      ),
-    );
-
-    _usernameDebounce = Timer(_usernameCheckDelay, () async {
-      final result = await _checkUsernameUseCase(
-        CheckUsernameAvailabilityParams(username: normalizedUsername),
-      );
-
-      if (isClosed || state.username != normalizedUsername) {
-        return;
-      }
-
-      result.fold(
-        (failure) => emit(
-          state.copyWith(
-            usernameStatus: UsernameCheckStatus.error,
-            usernameMessage:
-                'Unable to verify username right now. Please try again.',
-          ),
-        ),
-        (isAvailable) => emit(
-          state.copyWith(
-            usernameStatus: isAvailable
-                ? UsernameCheckStatus.available
-                : UsernameCheckStatus.taken,
-            usernameMessage: isAvailable ? null : 'Username is already taken.',
-            clearUsernameMessage: isAvailable,
-          ),
-        ),
-      );
-    });
-  }
-
   Future<void> signUp() async {
     if (!state.canSubmit) {
       return;
     }
 
-    emit(
-      state.copyWith(
-        status: SignupStatus.submitting,
-        clearError: true,
-        clearUsernameMessage: true,
-      ),
-    );
+    emit(state.copyWith(status: SignupStatus.submitting, clearError: true));
 
     final result = await _signUpWithEmailUseCase(
       SignUpWithEmailParams(
         email: state.email,
         password: state.password,
         fullName: state.name,
-        username: state.username,
       ),
     );
 
@@ -156,11 +75,5 @@ class SignupCubit extends Cubit<SignupState> {
       ),
       (_) => emit(state.copyWith(status: SignupStatus.success)),
     );
-  }
-
-  @override
-  Future<void> close() {
-    _usernameDebounce?.cancel();
-    return super.close();
   }
 }

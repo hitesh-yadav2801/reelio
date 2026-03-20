@@ -91,8 +91,8 @@ class ChangePasswordCubit extends Cubit<ChangePasswordState> {
       return 'All fields are required.';
     }
 
-    if (state.newPassword.length < 8) {
-      return 'New password must be at least 8 characters.';
+    if (state.newPassword.length < 6) {
+      return 'New password must be at least 6 characters.';
     }
 
     if (state.newPassword != state.confirmPassword) {

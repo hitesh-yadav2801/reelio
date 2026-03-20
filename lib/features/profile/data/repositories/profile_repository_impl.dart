@@ -73,7 +73,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
       case 'invalid-credential':
         return 'Your current password is incorrect.';
       case 'weak-password':
-        return 'Use a stronger password with at least 8 characters.';
+        return 'Use a stronger password with at least 6 characters.';
       case 'requires-recent-login':
         return 'Please sign in again before changing your password.';
       case 'operation-not-allowed':

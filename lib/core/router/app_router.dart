@@ -30,7 +30,6 @@ class AppRouter {
       final isAuthRoute =
           state.matchedLocation == '/login' ||
           state.matchedLocation == '/signup';
-      final isSignupRoute = state.matchedLocation == '/signup';
       final isUsernameSetupRoute = state.matchedLocation == '/pick-username';
 
       if (authState.status == AuthStatus.unauthenticated) {
@@ -38,9 +37,7 @@ class AppRouter {
       }
 
       if (authState.status == AuthStatus.authenticated) {
-        if (!authState.user.hasUsername &&
-            !isUsernameSetupRoute &&
-            !isSignupRoute) {
+        if (!authState.user.hasUsername && !isUsernameSetupRoute) {
           return '/pick-username';
         }
 

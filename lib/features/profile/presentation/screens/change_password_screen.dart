@@ -54,7 +54,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Text(
-                          'Use at least 8 characters and keep it unique.',
+                          'Use at least 6 characters and keep it unique.',
                           style: AppTypography.bodyMedium.copyWith(
                             color: AppColors.colorTextSecondary,
                           ),

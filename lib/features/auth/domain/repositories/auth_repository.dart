@@ -11,7 +11,6 @@ abstract class AuthRepository {
     required String email,
     required String password,
     required String fullName,
-    required String username,
   });
 
   /// Sign in with email and password.
