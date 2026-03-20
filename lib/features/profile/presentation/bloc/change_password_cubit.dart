@@ -1,16 +1,16 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
-import 'package:reelio/features/profile/domain/repositories/profile_repository.dart';
+import 'package:reelio/features/profile/domain/usecases/change_password_usecase.dart';
 
 part 'change_password_state.dart';
 
 @injectable
 class ChangePasswordCubit extends Cubit<ChangePasswordState> {
-  ChangePasswordCubit(this._profileRepository)
+  ChangePasswordCubit(this._changePasswordUseCase)
     : super(const ChangePasswordState());
 
-  final ProfileRepository _profileRepository;
+  final ChangePasswordUseCase _changePasswordUseCase;
 
   void currentPasswordChanged(String value) {
     emit(
@@ -61,9 +61,11 @@ class ChangePasswordCubit extends Cubit<ChangePasswordState> {
       ),
     );
 
-    final result = await _profileRepository.changePassword(
-      currentPassword: state.currentPassword,
-      newPassword: state.newPassword,
+    final result = await _changePasswordUseCase(
+      ChangePasswordParams(
+        currentPassword: state.currentPassword,
+        newPassword: state.newPassword,
+      ),
     );
 
     result.fold(

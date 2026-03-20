@@ -1,14 +1,19 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
-import 'package:reelio/features/auth/domain/repositories/auth_repository.dart';
+import 'package:reelio/core/usecases/usecase.dart';
+import 'package:reelio/features/auth/domain/usecases/sign_in_with_email_usecase.dart';
+import 'package:reelio/features/auth/domain/usecases/sign_in_with_google_usecase.dart';
 
 part 'login_state.dart';
 
 @injectable
 class LoginCubit extends Cubit<LoginState> {
-  LoginCubit(this._authRepository) : super(const LoginState());
-  final AuthRepository _authRepository;
+  LoginCubit(this._signInWithEmailUseCase, this._signInWithGoogleUseCase)
+    : super(const LoginState());
+
+  final SignInWithEmailUseCase _signInWithEmailUseCase;
+  final SignInWithGoogleUseCase _signInWithGoogleUseCase;
 
   void emailChanged(String value) {
     emit(
@@ -42,9 +47,8 @@ class LoginCubit extends Cubit<LoginState> {
       ),
     );
 
-    final result = await _authRepository.signInWithEmail(
-      email: state.email,
-      password: state.password,
+    final result = await _signInWithEmailUseCase(
+      SignInWithEmailParams(email: state.email, password: state.password),
     );
 
     result.fold(
@@ -65,7 +69,7 @@ class LoginCubit extends Cubit<LoginState> {
       state.copyWith(status: LoginStatus.submittingGoogle, clearError: true),
     );
 
-    final result = await _authRepository.signInWithGoogle();
+    final result = await _signInWithGoogleUseCase(const NoParams());
 
     result.fold(
       (failure) => emit(
