@@ -44,6 +44,7 @@ class ProfileUserModel extends ProfileUser {
     return {
       'email': email,
       'displayName': displayName,
+      'displayNameLower': displayName.toLowerCase(),
       'username': username,
       'photoUrl': photoUrl,
       'bio': bio,

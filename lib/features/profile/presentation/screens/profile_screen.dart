@@ -267,11 +267,20 @@ class _ProfileHeader extends StatelessWidget {
                 height: 32,
                 width: 1,
                 margin: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.space24,
+                  horizontal: AppSpacing.space16,
                 ),
                 color: AppColors.colorDivider,
               ),
               _StatItem(label: 'Followers', value: '${user.followerCount}'),
+              Container(
+                height: 32,
+                width: 1,
+                margin: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.space16,
+                ),
+                color: AppColors.colorDivider,
+              ),
+              _StatItem(label: 'Following', value: '${user.followingCount}'),
             ],
           ),
           const SizedBox(height: AppSpacing.space24),
