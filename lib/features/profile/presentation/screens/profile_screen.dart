@@ -147,29 +147,34 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: AppSpacing.space48,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space16),
-      decoration: const BoxDecoration(
-        color: AppColors.colorSurfaceElevated,
-        border: Border(bottom: BorderSide(color: AppColors.colorDivider)),
-      ),
-      child: Row(
-        children: [
-          const SizedBox(width: 40),
-          Expanded(
-            child: Text(
-              username,
-              textAlign: TextAlign.center,
-              style: AppTypography.username,
-            ),
+    return ColoredBox(
+      color: AppColors.colorSurfaceElevated,
+      child: SafeArea(
+        bottom: false,
+        child: Container(
+          height: AppSpacing.space48,
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space16),
+          decoration: const BoxDecoration(
+            border: Border(bottom: BorderSide(color: AppColors.colorDivider)),
           ),
-          IconButton(
-            onPressed: onLogoutPressed,
-            icon: const Icon(Icons.logout_rounded),
-            tooltip: 'Log out',
+          child: Row(
+            children: [
+              const SizedBox(width: 40),
+              Expanded(
+                child: Text(
+                  username,
+                  textAlign: TextAlign.center,
+                  style: AppTypography.username,
+                ),
+              ),
+              IconButton(
+                onPressed: onLogoutPressed,
+                icon: const Icon(Icons.logout_rounded),
+                tooltip: 'Log out',
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
