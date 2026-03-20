@@ -4,8 +4,7 @@ import 'package:reelio/core/theme/app_colors.dart';
 
 /// Typography styles for Reelio.
 ///
-/// Uses DM Serif Display (display/headings) + Inter (body/UI)
-/// as open equivalents to Hinge's proprietary typefaces.
+/// Font mapping: DM Serif Display for display/headings, Inter for body/UI.
 abstract final class AppTypography {
   // ── Display ──
   static TextStyle display = GoogleFonts.dmSerifDisplay(

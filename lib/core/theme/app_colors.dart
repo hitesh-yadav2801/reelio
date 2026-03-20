@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 
 /// All color tokens from the Reelio UI/UX design spec.
 ///
-/// Based on Hinge's brand palette with the 90/10 rule:
-/// white and warm surfaces occupy ≥90% of any screen, accent colors ≤10%.
+/// Target distribution: warm neutral surfaces >= 90%, accent colors <= 10%.
 abstract final class AppColors {
   // ── Core Surfaces ──
   static const colorBackground = Color(0xFFFFFFFF);

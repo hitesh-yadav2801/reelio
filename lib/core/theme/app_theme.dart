@@ -4,10 +4,9 @@ import 'package:reelio/core/theme/app_colors.dart';
 import 'package:reelio/core/theme/app_spacing.dart';
 import 'package:reelio/core/theme/app_typography.dart';
 
-/// Reelio app theme following the Hinge-inspired design system.
+/// Reelio app theme following the project design system.
 ///
-/// Light theme only — per the design philosophy, the app uses a warm,
-/// predominantly white canvas with accent colors applied sparingly (90/10 rule).
+/// Light theme configuration with warm neutral surfaces and limited accent use.
 abstract final class AppTheme {
   static ThemeData get light {
     return ThemeData(

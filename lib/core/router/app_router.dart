@@ -1,9 +1,17 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:reelio/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:reelio/features/auth/presentation/screens/login_screen.dart';
 import 'package:reelio/features/auth/presentation/screens/signup_screen.dart';
+import 'package:reelio/features/feed/presentation/screens/feed_screen.dart';
+import 'package:reelio/features/profile/domain/entities/profile_user.dart';
+import 'package:reelio/features/profile/presentation/screens/change_password_screen.dart';
+import 'package:reelio/features/profile/presentation/screens/edit_profile_screen.dart';
+import 'package:reelio/features/profile/presentation/screens/profile_screen.dart';
+import 'package:reelio/features/upload/presentation/screens/upload_screen.dart';
+import 'package:reelio/shared/widgets/reelio_app_shell.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -14,35 +22,83 @@ class AppRouter {
 
   late final GoRouter router = GoRouter(
     navigatorKey: rootNavigatorKey,
-    initialLocation: '/',
+    initialLocation: '/app/feed',
     refreshListenable: _GoRouterRefreshStream(authBloc.stream),
     redirect: (context, state) {
       final authState = authBloc.state;
-      final loggingIn =
+      final isAuthRoute =
           state.matchedLocation == '/login' ||
           state.matchedLocation == '/signup';
 
       if (authState.status == AuthStatus.unauthenticated) {
-        return loggingIn ? null : '/login';
+        return isAuthRoute ? null : '/login';
       }
 
-      if (authState.status == AuthStatus.authenticated && loggingIn) {
-        return '/';
+      if (authState.status == AuthStatus.authenticated && isAuthRoute) {
+        return '/app/feed';
       }
 
       return null;
     },
     routes: [
-      GoRoute(
-        path: '/',
-        builder: (context, state) => const Scaffold(
-          body: Center(child: Text('Feed Screen (Coming Soon)')),
-        ),
-      ),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(
         path: '/signup',
         builder: (context, state) => const SignupScreen(),
+      ),
+      GoRoute(path: '/', redirect: (context, state) => '/app/feed'),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) {
+          return ReelioAppShell(navigationShell: navigationShell);
+        },
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/app/feed',
+                builder: (context, state) => const FeedScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/app/upload',
+                builder: (context, state) => const UploadScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/app/profile',
+                builder: (context, state) => const ProfileScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'edit',
+                    parentNavigatorKey: rootNavigatorKey,
+                    builder: (context, state) {
+                      final extra = state.extra;
+                      return EditProfileScreen(
+                        initialProfile: extra is ProfileUser ? extra : null,
+                      );
+                    },
+                  ),
+                  GoRoute(
+                    path: 'change-password',
+                    parentNavigatorKey: rootNavigatorKey,
+                    builder: (context, state) {
+                      final extra = state.extra;
+                      return ChangePasswordScreen(
+                        canChangePassword: extra as bool? ?? true,
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
       ),
     ],
   );

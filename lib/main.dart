@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:reelio/core/bloc/app_bloc_observer.dart';
 import 'package:reelio/core/di/injection.dart';
 import 'package:reelio/core/router/app_router.dart';
 import 'package:reelio/core/theme/app_theme.dart';
@@ -9,6 +10,7 @@ import 'package:reelio/firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  Bloc.observer = AppBlocObserver();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   configureDependencies();
   runApp(const ReelioApp());

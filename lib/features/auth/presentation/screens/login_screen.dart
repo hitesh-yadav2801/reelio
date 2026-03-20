@@ -30,7 +30,12 @@ class LoginView extends StatelessWidget {
         listener: (context, state) {
           if (state.status == LoginStatus.error) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.errorMessage ?? 'Login failed')),
+              SnackBar(
+                content: Text(
+                  state.errorMessage ??
+                      'Unable to sign in right now. Please try again.',
+                ),
+              ),
             );
           }
         },
@@ -82,12 +87,12 @@ class LoginView extends StatelessWidget {
                 BlocBuilder<LoginCubit, LoginState>(
                   builder: (context, state) {
                     return ElevatedButton(
-                      onPressed: state.status == LoginStatus.submitting
+                      onPressed: state.isSubmitting
                           ? null
                           : () => context
                                 .read<LoginCubit>()
                                 .logInWithCredentials(),
-                      child: state.status == LoginStatus.submitting
+                      child: state.isSubmittingCredentials
                           ? const SizedBox(
                               height: 20,
                               width: 20,
@@ -100,14 +105,30 @@ class LoginView extends StatelessWidget {
                 const SizedBox(height: AppSpacing.space16),
 
                 // Google Sign In
-                OutlinedButton.icon(
-                  onPressed: () => context.read<LoginCubit>().logInWithGoogle(),
-                  icon: SvgPicture.asset(
-                    'assets/icons/google.svg',
-                    height: 24,
-                    width: 24,
-                  ),
-                  label: const Text('Continue with Google'),
+                BlocBuilder<LoginCubit, LoginState>(
+                  builder: (context, state) {
+                    return OutlinedButton.icon(
+                      onPressed: state.isSubmitting
+                          ? null
+                          : () => context.read<LoginCubit>().logInWithGoogle(),
+                      icon: state.isSubmittingGoogle
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : SvgPicture.asset(
+                              'assets/icons/google.svg',
+                              height: 24,
+                              width: 24,
+                            ),
+                      label: Text(
+                        state.isSubmittingGoogle
+                            ? 'Signing in with Google...'
+                            : 'Continue with Google',
+                      ),
+                    );
+                  },
                 ),
 
                 const Spacer(),

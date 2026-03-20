@@ -34,11 +34,16 @@ class SignupView extends StatelessWidget {
         listener: (context, state) {
           if (state.status == SignupStatus.error) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.errorMessage ?? 'Signup failed')),
+              SnackBar(
+                content: Text(
+                  state.errorMessage ??
+                      'Unable to create your account right now.',
+                ),
+              ),
             );
           }
           if (state.status == SignupStatus.success) {
-            context.go('/'); // Or wherever the landing page is
+            context.go('/app/feed');
           }
         },
         child: SafeArea(

@@ -11,17 +11,36 @@ class LoginCubit extends Cubit<LoginState> {
   final AuthRepository _authRepository;
 
   void emailChanged(String value) {
-    emit(state.copyWith(email: value, status: LoginStatus.initial));
+    emit(
+      state.copyWith(
+        email: value,
+        status: LoginStatus.initial,
+        clearError: true,
+      ),
+    );
   }
 
   void passwordChanged(String value) {
-    emit(state.copyWith(password: value, status: LoginStatus.initial));
+    emit(
+      state.copyWith(
+        password: value,
+        status: LoginStatus.initial,
+        clearError: true,
+      ),
+    );
   }
 
   Future<void> logInWithCredentials() async {
-    if (state.email.isEmpty || state.password.isEmpty) return;
+    if (state.email.isEmpty || state.password.isEmpty || state.isSubmitting) {
+      return;
+    }
 
-    emit(state.copyWith(status: LoginStatus.submitting));
+    emit(
+      state.copyWith(
+        status: LoginStatus.submittingCredentials,
+        clearError: true,
+      ),
+    );
 
     final result = await _authRepository.signInWithEmail(
       email: state.email,
@@ -40,7 +59,11 @@ class LoginCubit extends Cubit<LoginState> {
   }
 
   Future<void> logInWithGoogle() async {
-    emit(state.copyWith(status: LoginStatus.submitting));
+    if (state.isSubmitting) return;
+
+    emit(
+      state.copyWith(status: LoginStatus.submittingGoogle, clearError: true),
+    );
 
     final result = await _authRepository.signInWithGoogle();
 
