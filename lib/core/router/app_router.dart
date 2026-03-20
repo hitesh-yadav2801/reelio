@@ -60,6 +60,11 @@ class AppRouter {
         path: '/pick-username',
         builder: (context, state) => const UsernameSetupScreen(),
       ),
+      GoRoute(
+        path: '/search',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const SearchScreen(),
+      ),
       GoRoute(path: '/', redirect: (context, state) => '/app/feed'),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
@@ -71,14 +76,6 @@ class AppRouter {
               GoRoute(
                 path: '/app/feed',
                 builder: (context, state) => const FeedScreen(),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/app/search',
-                builder: (context, state) => const SearchScreen(),
               ),
             ],
           ),

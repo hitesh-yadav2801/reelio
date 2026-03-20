@@ -32,25 +32,18 @@ class ReelioAppShell extends StatelessWidget {
               onTap: () => _onTabSelected(0),
             ),
             _NavItem(
-              icon: Icons.search_rounded,
-              label: 'Search',
-              isSelected: navigationShell.currentIndex == 1,
-              isUpload: false,
-              onTap: () => _onTabSelected(1),
-            ),
-            _NavItem(
               icon: Icons.add_rounded,
               label: 'Upload',
-              isSelected: navigationShell.currentIndex == 2,
+              isSelected: navigationShell.currentIndex == 1,
               isUpload: true,
-              onTap: () => _onTabSelected(2),
+              onTap: () => _onTabSelected(1),
             ),
             _NavItem(
               icon: Icons.person_rounded,
               label: 'Profile',
-              isSelected: navigationShell.currentIndex == 3,
+              isSelected: navigationShell.currentIndex == 2,
               isUpload: false,
-              onTap: () => _onTabSelected(3),
+              onTap: () => _onTabSelected(2),
             ),
           ],
         ),
@@ -88,18 +81,15 @@ class _NavItem extends StatelessWidget {
         child: GestureDetector(
           onTap: onTap,
           child: Center(
-            child: Transform.translate(
-              offset: const Offset(0, -8),
-              child: Container(
-                width: AppSpacing.space48,
-                height: AppSpacing.space48,
-                decoration: BoxDecoration(
-                  color: AppColors.colorAccentPrimary,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.colorDivider),
-                ),
-                child: Icon(icon, size: 28, color: AppColors.colorTextOnAccent),
+            child: Container(
+              width: AppSpacing.space48,
+              height: AppSpacing.space48,
+              decoration: BoxDecoration(
+                color: AppColors.colorAccentPrimary,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.colorDivider),
               ),
+              child: Icon(icon, size: 28, color: AppColors.colorTextOnAccent),
             ),
           ),
         ),

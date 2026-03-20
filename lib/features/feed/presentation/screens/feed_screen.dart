@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:reelio/core/theme/app_colors.dart';
 import 'package:reelio/core/theme/app_spacing.dart';
 import 'package:reelio/core/theme/app_typography.dart';
@@ -10,6 +11,16 @@ class FeedScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.colorBackground,
+      appBar: AppBar(
+        title: const Text('Feed'),
+        actions: [
+          IconButton(
+            onPressed: () => context.push('/search'),
+            icon: const Icon(Icons.search_rounded),
+            tooltip: 'Search',
+          ),
+        ],
+      ),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.space24),
