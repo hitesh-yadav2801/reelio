@@ -20,11 +20,9 @@ class AuthRepositoryImpl implements AuthRepository {
         if (firebaseUser == null) return ReelioUser.empty;
         try {
           return await _remoteDataSource.getUserProfile(firebaseUser.uid);
-        } on Exception catch (error, stackTrace) {
+        } on Exception {
           AppLogger.instance.w(
             'Auth user stream profile fallback for uid=${firebaseUser.uid}.',
-            error: error,
-            stackTrace: stackTrace,
           );
           return _basicUserFromFirebase(firebaseUser);
         }
@@ -57,8 +55,8 @@ class AuthRepositoryImpl implements AuthRepository {
       );
       await _remoteDataSource.createUserProfile(userModel);
       return right(unit);
-    } on FirebaseAuthException catch (error, stackTrace) {
-      _logAuthException('signUpWithEmail', error, stackTrace);
+    } on FirebaseAuthException catch (error) {
+      _logAuthException('signUpWithEmail', error);
       return left(
         AuthFailure(
           _authMessageForCode(
@@ -67,8 +65,8 @@ class AuthRepositoryImpl implements AuthRepository {
           ),
         ),
       );
-    } on FirebaseException catch (error, stackTrace) {
-      _logFirestoreException('signUpWithEmail', error, stackTrace);
+    } on FirebaseException catch (error) {
+      _logFirestoreException('signUpWithEmail', error);
       return left(
         AuthFailure(
           _firestoreMessageForCode(
@@ -108,8 +106,8 @@ class AuthRepositoryImpl implements AuthRepository {
 
       final user = await _resolveUserProfile(firebaseUser);
       return right(user);
-    } on FirebaseAuthException catch (error, stackTrace) {
-      _logAuthException('signInWithEmail', error, stackTrace);
+    } on FirebaseAuthException catch (error) {
+      _logAuthException('signInWithEmail', error);
       return left(
         AuthFailure(
           _authMessageForCode(
@@ -147,12 +145,10 @@ class AuthRepositoryImpl implements AuthRepository {
           firebaseUser.uid,
         );
         return right(existingUser);
-      } on Exception catch (error, stackTrace) {
+      } on Exception {
         AppLogger.instance.i(
           'Google user profile not found; creating one for '
           'uid=${firebaseUser.uid}.',
-          error: error,
-          stackTrace: stackTrace,
         );
 
         // Create new profile for Google user
@@ -167,19 +163,18 @@ class AuthRepositoryImpl implements AuthRepository {
 
         try {
           await _remoteDataSource.createUserProfile(newUser);
-        } on FirebaseException catch (createError, createStackTrace) {
+        } on FirebaseException catch (createError) {
           _logFirestoreException(
             'signInWithGoogle.createUserProfile',
             createError,
-            createStackTrace,
           );
           return right(_basicUserFromFirebase(firebaseUser));
         }
 
         return right(newUser);
       }
-    } on FirebaseAuthException catch (error, stackTrace) {
-      _logAuthException('signInWithGoogle', error, stackTrace);
+    } on FirebaseAuthException catch (error) {
+      _logAuthException('signInWithGoogle', error);
       return left(
         AuthFailure(
           _authMessageForCode(
@@ -205,8 +200,8 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       await _remoteDataSource.signOut();
       return right(unit);
-    } on FirebaseAuthException catch (error, stackTrace) {
-      _logAuthException('signOut', error, stackTrace);
+    } on FirebaseAuthException catch (error) {
+      _logAuthException('signOut', error);
       return left(const AuthFailure('Unable to log out right now.'));
     } on Exception catch (error, stackTrace) {
       AppLogger.instance.e(
@@ -221,11 +216,9 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<ReelioUser> _resolveUserProfile(User firebaseUser) async {
     try {
       return await _remoteDataSource.getUserProfile(firebaseUser.uid);
-    } on Exception catch (error, stackTrace) {
+    } on Exception {
       AppLogger.instance.w(
         'Falling back to auth profile for uid=${firebaseUser.uid}.',
-        error: error,
-        stackTrace: stackTrace,
       );
       return _basicUserFromFirebase(firebaseUser);
     }
@@ -286,28 +279,11 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
-  void _logAuthException(
-    String action,
-    FirebaseAuthException error,
-    StackTrace stackTrace,
-  ) {
-    AppLogger.instance.w(
-      'Auth error during $action [${error.code}] ${error.message ?? ''}'.trim(),
-      error: error,
-      stackTrace: stackTrace,
-    );
+  void _logAuthException(String action, FirebaseAuthException error) {
+    AppLogger.instance.w('Auth failure during $action [${error.code}]');
   }
 
-  void _logFirestoreException(
-    String action,
-    FirebaseException error,
-    StackTrace stackTrace,
-  ) {
-    AppLogger.instance.w(
-      'Firestore error during $action [${error.code}] ${error.message ?? ''}'
-          .trim(),
-      error: error,
-      stackTrace: stackTrace,
-    );
+  void _logFirestoreException(String action, FirebaseException error) {
+    AppLogger.instance.w('Firestore failure during $action [${error.code}]');
   }
 }

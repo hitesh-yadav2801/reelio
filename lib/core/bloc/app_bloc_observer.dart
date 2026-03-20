@@ -13,14 +13,17 @@ class AppBlocObserver extends BlocObserver {
   void onEvent(Bloc<dynamic, dynamic> bloc, Object? event) {
     super.onEvent(bloc, event);
     if (!kDebugMode) return;
-    _logger.d('[BLOC EVENT] ${bloc.runtimeType} -> $event');
+    _logger.d('[BLOC EVENT] ${bloc.runtimeType} -> ${event.runtimeType}');
   }
 
   @override
   void onChange(BlocBase<dynamic> bloc, Change<dynamic> change) {
     super.onChange(bloc, change);
     if (!kDebugMode) return;
-    _logger.d('[BLOC CHANGE] ${bloc.runtimeType} -> $change');
+    _logger.d(
+      '[BLOC CHANGE] ${bloc.runtimeType} '
+      '(${change.currentState.runtimeType} -> ${change.nextState.runtimeType})',
+    );
   }
 
   @override
@@ -30,16 +33,15 @@ class AppBlocObserver extends BlocObserver {
   ) {
     super.onTransition(bloc, transition);
     if (!kDebugMode) return;
-    _logger.d('[BLOC TRANSITION] ${bloc.runtimeType} -> $transition');
+    _logger.d(
+      '[BLOC TRANSITION] ${bloc.runtimeType} '
+      '(${transition.event.runtimeType})',
+    );
   }
 
   @override
   void onError(BlocBase<dynamic> bloc, Object error, StackTrace stackTrace) {
-    _logger.e(
-      '[BLOC ERROR] ${bloc.runtimeType} -> $error',
-      error: error,
-      stackTrace: stackTrace,
-    );
+    _logger.e('[BLOC ERROR] ${bloc.runtimeType} (${error.runtimeType})');
     super.onError(bloc, error, stackTrace);
   }
 }

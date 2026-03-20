@@ -34,4 +34,7 @@ class SignupState extends Equatable {
 
   @override
   List<Object?> get props => [name, email, password, status, errorMessage];
+
+  @override
+  bool get stringify => false;
 }

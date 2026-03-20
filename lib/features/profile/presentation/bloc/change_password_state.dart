@@ -44,4 +44,7 @@ class ChangePasswordState extends Equatable {
     confirmPassword,
     message,
   ];
+
+  @override
+  bool get stringify => false;
 }
