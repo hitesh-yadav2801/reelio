@@ -2,22 +2,26 @@ import 'dart:async';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
+import 'package:reelio/core/usecases/usecase.dart';
 import 'package:reelio/features/auth/domain/entities/reelio_user.dart';
-import 'package:reelio/features/auth/domain/repositories/auth_repository.dart';
+import 'package:reelio/features/auth/domain/usecases/observe_auth_state_usecase.dart';
+import 'package:reelio/features/auth/domain/usecases/sign_out_usecase.dart';
 
 part 'auth_event.dart';
 part 'auth_state.dart';
 
 @injectable
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
-  AuthBloc(this._authRepository) : super(const AuthState.initial()) {
+  AuthBloc(this._observeAuthStateUseCase, this._signOutUseCase)
+    : super(const AuthState.initial()) {
     on<AuthSubscriptionRequested>(_onSubscriptionRequested);
     on<AuthLogoutRequested>(_onLogoutRequested);
     on<AuthUserChanged>(_onUserChanged);
 
     add(const AuthSubscriptionRequested());
   }
-  final AuthRepository _authRepository;
+  final ObserveAuthStateUseCase _observeAuthStateUseCase;
+  final SignOutUseCase _signOutUseCase;
   StreamSubscription<ReelioUser>? _userSubscription;
 
   void _onSubscriptionRequested(
@@ -25,9 +29,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) {
     _userSubscription?.cancel();
-    _userSubscription = _authRepository.user.listen(
-      (user) => add(AuthUserChanged(user)),
-    );
+    _userSubscription = _observeAuthStateUseCase(
+      const NoParams(),
+    ).listen((user) => add(AuthUserChanged(user)));
   }
 
   void _onUserChanged(AuthUserChanged event, Emitter<AuthState> emit) {
@@ -42,7 +46,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthLogoutRequested event,
     Emitter<AuthState> emit,
   ) async {
-    await _authRepository.signOut();
+    await _signOutUseCase(const NoParams());
   }
 
   @override

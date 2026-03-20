@@ -1,14 +1,15 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
-import 'package:reelio/features/auth/domain/repositories/auth_repository.dart';
+import 'package:reelio/features/auth/domain/usecases/sign_up_with_email_usecase.dart';
 
 part 'signup_state.dart';
 
 @injectable
 class SignupCubit extends Cubit<SignupState> {
-  SignupCubit(this._authRepository) : super(const SignupState());
-  final AuthRepository _authRepository;
+  SignupCubit(this._signUpWithEmailUseCase) : super(const SignupState());
+
+  final SignUpWithEmailUseCase _signUpWithEmailUseCase;
 
   void emailChanged(String value) {
     emit(state.copyWith(email: value, status: SignupStatus.initial));
@@ -29,10 +30,12 @@ class SignupCubit extends Cubit<SignupState> {
 
     emit(state.copyWith(status: SignupStatus.submitting));
 
-    final result = await _authRepository.signUpWithEmail(
-      email: state.email,
-      password: state.password,
-      fullName: state.name,
+    final result = await _signUpWithEmailUseCase(
+      SignUpWithEmailParams(
+        email: state.email,
+        password: state.password,
+        fullName: state.name,
+      ),
     );
 
     result.fold(
