@@ -37,6 +37,7 @@ class UserModel extends ReelioUser {
       'email': email,
       'username': username,
       'displayName': displayName,
+      'displayNameLower': displayName?.toLowerCase(),
       'photoUrl': photoUrl,
       'bio': bio,
       'followerCount': followerCount,

@@ -4,6 +4,8 @@ import 'package:injectable/injectable.dart';
 import 'package:reelio/features/profile/data/models/profile_user_model.dart';
 
 abstract class ProfileRemoteDataSource {
+  Stream<ProfileUserModel> observeCurrentProfile();
+
   Future<ProfileUserModel> getCurrentProfile();
 
   Future<ProfileUserModel> updateProfile({
@@ -25,6 +27,38 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
   final FirebaseFirestore _firestore;
 
   @override
+  Stream<ProfileUserModel> observeCurrentProfile() async* {
+    final user = _requireUser();
+    final userRef = _firestore.collection('users').doc(user.uid);
+    final existingDoc = await userRef.get();
+
+    if (!existingDoc.exists) {
+      final seed = <String, dynamic>{
+        'email': user.email ?? '',
+        'displayName': user.displayName ?? 'Reelio User',
+        'displayNameLower': (user.displayName ?? 'Reelio User').toLowerCase(),
+        'username': '',
+        'photoUrl': user.photoURL,
+        'bio': '',
+        'reelsCount': 0,
+        'followerCount': 0,
+        'followingCount': 0,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+      await userRef.set(seed, SetOptions(merge: true));
+      yield ProfileUserModel.fromFirestore(firebaseUser: user, data: seed);
+    }
+
+    yield* userRef.snapshots().map(
+      (snapshot) => ProfileUserModel.fromFirestore(
+        firebaseUser: _firebaseAuth.currentUser ?? user,
+        data: snapshot.data() ?? <String, dynamic>{},
+      ),
+    );
+  }
+
+  @override
   Future<ProfileUserModel> getCurrentProfile() async {
     final user = _requireUser();
     final userRef = _firestore.collection('users').doc(user.uid);
@@ -34,6 +68,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
       final seed = <String, dynamic>{
         'email': user.email ?? '',
         'displayName': user.displayName ?? 'Reelio User',
+        'displayNameLower': (user.displayName ?? 'Reelio User').toLowerCase(),
         'username': '',
         'photoUrl': user.photoURL,
         'bio': '',
@@ -64,6 +99,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
     final data = <String, dynamic>{
       'email': user.email ?? '',
       'displayName': displayName,
+      'displayNameLower': displayName.toLowerCase(),
       'photoUrl': user.photoURL,
       'bio': bio,
       'updatedAt': FieldValue.serverTimestamp(),

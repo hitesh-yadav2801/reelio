@@ -206,6 +206,9 @@ class RemoteAuthDataSourceImpl implements RemoteAuthDataSource {
                 ? {
                     'email': firebaseUser.email ?? '',
                     'displayName': firebaseUser.displayName ?? 'Reelio User',
+                    'displayNameLower':
+                        (firebaseUser.displayName ?? 'Reelio User')
+                            .toLowerCase(),
                     'photoUrl': firebaseUser.photoURL,
                     'bio': '',
                     'reelsCount': 0,

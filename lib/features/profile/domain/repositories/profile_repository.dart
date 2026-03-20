@@ -2,6 +2,8 @@ import 'package:reelio/core/utils/typedefs.dart';
 import 'package:reelio/features/profile/domain/entities/profile_user.dart';
 
 abstract class ProfileRepository {
+  Stream<ProfileUser> observeCurrentProfile();
+
   FutureEither<ProfileUser> getCurrentProfile();
 
   FutureEither<ProfileUser> updateProfile({

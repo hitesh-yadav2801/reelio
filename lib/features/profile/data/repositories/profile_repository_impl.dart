@@ -14,6 +14,11 @@ class ProfileRepositoryImpl implements ProfileRepository {
   final ProfileRemoteDataSource _remoteDataSource;
 
   @override
+  Stream<ProfileUser> observeCurrentProfile() {
+    return _remoteDataSource.observeCurrentProfile();
+  }
+
+  @override
   FutureEither<ProfileUser> getCurrentProfile() async {
     try {
       final profile = await _remoteDataSource.getCurrentProfile();
