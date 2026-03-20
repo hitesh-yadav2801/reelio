@@ -11,6 +11,7 @@ abstract class AuthRepository {
     required String email,
     required String password,
     required String fullName,
+    required String username,
   });
 
   /// Sign in with email and password.
@@ -21,6 +22,12 @@ abstract class AuthRepository {
 
   /// Sign in with Google.
   FutureEither<ReelioUser> signInWithGoogle();
+
+  /// Checks if a username is available.
+  FutureEither<bool> isUsernameAvailable(String username);
+
+  /// Sets username for the current authenticated user.
+  FutureEitherVoid setUsername(String username);
 
   /// Sign out current user.
   FutureEitherVoid signOut();

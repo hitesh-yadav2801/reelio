@@ -5,6 +5,7 @@ class ProfileUser extends Equatable {
     required this.uid,
     required this.email,
     required this.displayName,
+    this.username = '',
     this.photoUrl,
     this.bio = '',
     this.reelsCount = 0,
@@ -16,6 +17,7 @@ class ProfileUser extends Equatable {
   final String uid;
   final String email;
   final String displayName;
+  final String username;
   final String? photoUrl;
   final String bio;
   final int reelsCount;
@@ -23,21 +25,13 @@ class ProfileUser extends Equatable {
   final int followingCount;
   final bool canChangePassword;
 
-  String get username {
-    final source = displayName.trim().isNotEmpty
-        ? displayName
-        : email.split('@').first;
-    final normalized = source.toLowerCase().replaceAll(
-      RegExp('[^a-z0-9_]'),
-      '',
-    );
-    return normalized.isEmpty ? 'user' : normalized;
-  }
+  bool get hasUsername => username.trim().isNotEmpty;
 
   ProfileUser copyWith({
     String? uid,
     String? email,
     String? displayName,
+    String? username,
     String? photoUrl,
     String? bio,
     int? reelsCount,
@@ -49,6 +43,7 @@ class ProfileUser extends Equatable {
       uid: uid ?? this.uid,
       email: email ?? this.email,
       displayName: displayName ?? this.displayName,
+      username: username ?? this.username,
       photoUrl: photoUrl ?? this.photoUrl,
       bio: bio ?? this.bio,
       reelsCount: reelsCount ?? this.reelsCount,
@@ -65,6 +60,7 @@ class ProfileUser extends Equatable {
     uid,
     email,
     displayName,
+    username,
     photoUrl,
     bio,
     reelsCount,

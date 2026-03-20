@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:reelio/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:reelio/features/auth/presentation/screens/login_screen.dart';
 import 'package:reelio/features/auth/presentation/screens/signup_screen.dart';
+import 'package:reelio/features/auth/presentation/screens/username_setup_screen.dart';
 import 'package:reelio/features/feed/presentation/screens/feed_screen.dart';
 import 'package:reelio/features/profile/domain/entities/profile_user.dart';
 import 'package:reelio/features/profile/presentation/screens/change_password_screen.dart';
@@ -29,13 +30,24 @@ class AppRouter {
       final isAuthRoute =
           state.matchedLocation == '/login' ||
           state.matchedLocation == '/signup';
+      final isSignupRoute = state.matchedLocation == '/signup';
+      final isUsernameSetupRoute = state.matchedLocation == '/pick-username';
 
       if (authState.status == AuthStatus.unauthenticated) {
         return isAuthRoute ? null : '/login';
       }
 
-      if (authState.status == AuthStatus.authenticated && isAuthRoute) {
-        return '/app/feed';
+      if (authState.status == AuthStatus.authenticated) {
+        if (!authState.user.hasUsername &&
+            !isUsernameSetupRoute &&
+            !isSignupRoute) {
+          return '/pick-username';
+        }
+
+        if (authState.user.hasUsername &&
+            (isAuthRoute || isUsernameSetupRoute)) {
+          return '/app/feed';
+        }
       }
 
       return null;
@@ -45,6 +57,10 @@ class AppRouter {
       GoRoute(
         path: '/signup',
         builder: (context, state) => const SignupScreen(),
+      ),
+      GoRoute(
+        path: '/pick-username',
+        builder: (context, state) => const UsernameSetupScreen(),
       ),
       GoRoute(path: '/', redirect: (context, state) => '/app/feed'),
       StatefulShellRoute.indexedStack(

@@ -6,83 +6,72 @@ import 'package:reelio/core/di/injection.dart';
 import 'package:reelio/core/theme/app_colors.dart';
 import 'package:reelio/core/theme/app_spacing.dart';
 import 'package:reelio/core/theme/app_typography.dart';
-import 'package:reelio/features/auth/presentation/bloc/signup_cubit.dart';
+import 'package:reelio/features/auth/presentation/bloc/username_setup_cubit.dart';
 import 'package:reelio/features/auth/presentation/models/username_check_status.dart';
 import 'package:reelio/shared/input_formatters/lower_case_text_formatter.dart';
 
-class SignupScreen extends StatelessWidget {
-  const SignupScreen({super.key});
+class UsernameSetupScreen extends StatelessWidget {
+  const UsernameSetupScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => getIt<SignupCubit>(),
-      child: const SignupView(),
+      create: (_) => getIt<UsernameSetupCubit>(),
+      child: const _UsernameSetupView(),
     );
   }
 }
 
-class SignupView extends StatelessWidget {
-  const SignupView({super.key});
+class _UsernameSetupView extends StatelessWidget {
+  const _UsernameSetupView();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: const BackButton(color: AppColors.colorTextPrimary),
+        automaticallyImplyLeading: false,
+        title: const Text('Choose Username'),
       ),
-      body: BlocListener<SignupCubit, SignupState>(
+      body: BlocListener<UsernameSetupCubit, UsernameSetupState>(
         listener: (context, state) {
-          if (state.status == SignupStatus.error) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  state.errorMessage ??
-                      'Unable to create your account right now.',
-                ),
-              ),
-            );
+          if (state.status == UsernameSetupStatus.error &&
+              state.errorMessage != null) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(state.errorMessage!)));
           }
-          if (state.status == SignupStatus.success) {
+
+          if (state.status == UsernameSetupStatus.success) {
             context.go('/app/feed');
           }
         },
         child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space24),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.space24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: AppSpacing.space16),
                 Text(
-                  'Join Reelio',
+                  'Pick your username',
                   style: AppTypography.display,
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: AppSpacing.space8),
                 Text(
-                  'Create an account to start sharing your world.',
+                  'You only do this once. '
+                  'This username will be visible across Reelio.',
                   style: AppTypography.bodyMedium.copyWith(
                     color: AppColors.colorTextSecondary,
                   ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: AppSpacing.space32),
-                TextField(
-                  onChanged: (name) =>
-                      context.read<SignupCubit>().nameChanged(name),
-                  decoration: const InputDecoration(
-                    labelText: 'Full Name',
-                    hintText: 'Jane Doe',
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.space16),
-                BlocBuilder<SignupCubit, SignupState>(
+                BlocBuilder<UsernameSetupCubit, UsernameSetupState>(
                   builder: (context, state) {
                     return TextField(
-                      onChanged: context.read<SignupCubit>().usernameChanged,
+                      onChanged: context
+                          .read<UsernameSetupCubit>()
+                          .usernameChanged,
                       autocorrect: false,
                       enableSuggestions: false,
                       inputFormatters: [
@@ -106,49 +95,22 @@ class SignupView extends StatelessWidget {
                     );
                   },
                 ),
-                const SizedBox(height: AppSpacing.space16),
-                TextField(
-                  onChanged: (email) =>
-                      context.read<SignupCubit>().emailChanged(email),
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    hintText: 'jane@example.com',
-                  ),
-                  keyboardType: TextInputType.emailAddress,
-                ),
-                const SizedBox(height: AppSpacing.space16),
-                TextField(
-                  onChanged: (password) =>
-                      context.read<SignupCubit>().passwordChanged(password),
-                  decoration: const InputDecoration(labelText: 'Password'),
-                  obscureText: true,
-                ),
-                const SizedBox(height: AppSpacing.space32),
-                BlocBuilder<SignupCubit, SignupState>(
+                const SizedBox(height: AppSpacing.space24),
+                BlocBuilder<UsernameSetupCubit, UsernameSetupState>(
                   builder: (context, state) {
                     return ElevatedButton(
                       onPressed: state.canSubmit
-                          ? () => context.read<SignupCubit>().signUp()
+                          ? () => context.read<UsernameSetupCubit>().submit()
                           : null,
-                      child: state.status == SignupStatus.submitting
+                      child: state.isSubmitting
                           ? const SizedBox(
                               height: 20,
                               width: 20,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Text('Sign Up'),
+                          : const Text('Continue'),
                     );
                   },
-                ),
-                const SizedBox(height: AppSpacing.space32),
-                Center(
-                  child: Text(
-                    'By signing up, you agree to our Terms and Privacy Policy.',
-                    style: AppTypography.caption.copyWith(
-                      color: AppColors.colorTextSecondary,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
                 ),
               ],
             ),
@@ -158,7 +120,7 @@ class SignupView extends StatelessWidget {
     );
   }
 
-  Widget? _usernameStatusIcon(SignupState state) {
+  Widget? _usernameStatusIcon(UsernameSetupState state) {
     switch (state.usernameStatus) {
       case UsernameCheckStatus.checking:
         return const Padding(
@@ -183,7 +145,7 @@ class SignupView extends StatelessWidget {
     }
   }
 
-  String _usernameHelperText(SignupState state) {
+  String _usernameHelperText(UsernameSetupState state) {
     switch (state.usernameStatus) {
       case UsernameCheckStatus.initial:
         return '3-20 chars: lowercase letters, numbers, underscores.';
@@ -202,7 +164,7 @@ class SignupView extends StatelessWidget {
     }
   }
 
-  Color _usernameHelperColor(SignupState state) {
+  Color _usernameHelperColor(UsernameSetupState state) {
     switch (state.usernameStatus) {
       case UsernameCheckStatus.available:
         return AppColors.colorSuccess;

@@ -5,51 +5,23 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:reelio/core/validation/username_validator.dart';
 import 'package:reelio/features/auth/domain/usecases/check_username_availability_usecase.dart';
-import 'package:reelio/features/auth/domain/usecases/sign_up_with_email_usecase.dart';
+import 'package:reelio/features/auth/domain/usecases/set_username_usecase.dart';
 import 'package:reelio/features/auth/presentation/models/username_check_status.dart';
 
-part 'signup_state.dart';
+part 'username_setup_state.dart';
+
+enum UsernameSetupStatus { initial, submitting, success, error }
 
 @injectable
-class SignupCubit extends Cubit<SignupState> {
-  SignupCubit(this._signUpWithEmailUseCase, this._checkUsernameUseCase)
-    : super(const SignupState());
+class UsernameSetupCubit extends Cubit<UsernameSetupState> {
+  UsernameSetupCubit(this._checkUsernameUseCase, this._setUsernameUseCase)
+    : super(const UsernameSetupState());
 
-  final SignUpWithEmailUseCase _signUpWithEmailUseCase;
   final CheckUsernameAvailabilityUseCase _checkUsernameUseCase;
+  final SetUsernameUseCase _setUsernameUseCase;
   Timer? _usernameDebounce;
 
   static const Duration _usernameCheckDelay = Duration(milliseconds: 350);
-
-  void emailChanged(String value) {
-    emit(
-      state.copyWith(
-        email: value,
-        status: SignupStatus.initial,
-        clearError: true,
-      ),
-    );
-  }
-
-  void passwordChanged(String value) {
-    emit(
-      state.copyWith(
-        password: value,
-        status: SignupStatus.initial,
-        clearError: true,
-      ),
-    );
-  }
-
-  void nameChanged(String value) {
-    emit(
-      state.copyWith(
-        name: value,
-        status: SignupStatus.initial,
-        clearError: true,
-      ),
-    );
-  }
 
   void usernameChanged(String value) {
     final normalizedUsername = UsernameValidator.normalize(value);
@@ -60,7 +32,7 @@ class SignupCubit extends Cubit<SignupState> {
         state.copyWith(
           username: normalizedUsername,
           usernameStatus: UsernameCheckStatus.initial,
-          status: SignupStatus.initial,
+          status: UsernameSetupStatus.initial,
           clearError: true,
           clearUsernameMessage: true,
         ),
@@ -78,7 +50,7 @@ class SignupCubit extends Cubit<SignupState> {
           username: normalizedUsername,
           usernameStatus: UsernameCheckStatus.invalid,
           usernameMessage: validationError,
-          status: SignupStatus.initial,
+          status: UsernameSetupStatus.initial,
           clearError: true,
         ),
       );
@@ -89,7 +61,7 @@ class SignupCubit extends Cubit<SignupState> {
       state.copyWith(
         username: normalizedUsername,
         usernameStatus: UsernameCheckStatus.checking,
-        status: SignupStatus.initial,
+        status: UsernameSetupStatus.initial,
         clearError: true,
         clearUsernameMessage: true,
       ),
@@ -105,7 +77,7 @@ class SignupCubit extends Cubit<SignupState> {
       }
 
       result.fold(
-        (failure) => emit(
+        (_) => emit(
           state.copyWith(
             usernameStatus: UsernameCheckStatus.error,
             usernameMessage:
@@ -125,36 +97,27 @@ class SignupCubit extends Cubit<SignupState> {
     });
   }
 
-  Future<void> signUp() async {
+  Future<void> submit() async {
     if (!state.canSubmit) {
       return;
     }
 
     emit(
-      state.copyWith(
-        status: SignupStatus.submitting,
-        clearError: true,
-        clearUsernameMessage: true,
-      ),
+      state.copyWith(status: UsernameSetupStatus.submitting, clearError: true),
     );
 
-    final result = await _signUpWithEmailUseCase(
-      SignUpWithEmailParams(
-        email: state.email,
-        password: state.password,
-        fullName: state.name,
-        username: state.username,
-      ),
+    final result = await _setUsernameUseCase(
+      SetUsernameParams(username: state.username),
     );
 
     result.fold(
       (failure) => emit(
         state.copyWith(
-          status: SignupStatus.error,
+          status: UsernameSetupStatus.error,
           errorMessage: failure.message,
         ),
       ),
-      (_) => emit(state.copyWith(status: SignupStatus.success)),
+      (_) => emit(state.copyWith(status: UsernameSetupStatus.success)),
     );
   }
 

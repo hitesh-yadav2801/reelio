@@ -1,54 +1,37 @@
-part of 'signup_cubit.dart';
+part of 'username_setup_cubit.dart';
 
-enum SignupStatus { initial, submitting, success, error }
-
-class SignupState extends Equatable {
-  const SignupState({
-    this.name = '',
+class UsernameSetupState extends Equatable {
+  const UsernameSetupState({
     this.username = '',
-    this.email = '',
-    this.password = '',
     this.usernameStatus = UsernameCheckStatus.initial,
     this.usernameMessage,
-    this.status = SignupStatus.initial,
+    this.status = UsernameSetupStatus.initial,
     this.errorMessage,
   });
-  final String name;
+
   final String username;
-  final String email;
-  final String password;
   final UsernameCheckStatus usernameStatus;
   final String? usernameMessage;
-  final SignupStatus status;
+  final UsernameSetupStatus status;
   final String? errorMessage;
 
-  bool get isSubmitting => status == SignupStatus.submitting;
+  bool get isSubmitting => status == UsernameSetupStatus.submitting;
 
   bool get canSubmit {
-    return name.trim().isNotEmpty &&
-        email.trim().isNotEmpty &&
-        password.isNotEmpty &&
-        usernameStatus == UsernameCheckStatus.available &&
-        !isSubmitting;
+    return usernameStatus == UsernameCheckStatus.available && !isSubmitting;
   }
 
-  SignupState copyWith({
-    String? name,
+  UsernameSetupState copyWith({
     String? username,
-    String? email,
-    String? password,
     UsernameCheckStatus? usernameStatus,
     String? usernameMessage,
-    SignupStatus? status,
+    UsernameSetupStatus? status,
     String? errorMessage,
-    bool clearError = false,
     bool clearUsernameMessage = false,
+    bool clearError = false,
   }) {
-    return SignupState(
-      name: name ?? this.name,
+    return UsernameSetupState(
       username: username ?? this.username,
-      email: email ?? this.email,
-      password: password ?? this.password,
       usernameStatus: usernameStatus ?? this.usernameStatus,
       usernameMessage: clearUsernameMessage
           ? null
@@ -60,10 +43,7 @@ class SignupState extends Equatable {
 
   @override
   List<Object?> get props => [
-    name,
     username,
-    email,
-    password,
     usernameStatus,
     usernameMessage,
     status,

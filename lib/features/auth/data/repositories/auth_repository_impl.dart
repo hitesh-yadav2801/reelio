@@ -4,6 +4,7 @@ import 'package:injectable/injectable.dart';
 import 'package:reelio/core/errors/failure.dart';
 import 'package:reelio/core/logging/app_logger.dart';
 import 'package:reelio/core/utils/typedefs.dart';
+import 'package:reelio/core/validation/username_validator.dart';
 import 'package:reelio/features/auth/data/models/user_model.dart';
 import 'package:reelio/features/auth/data/sources/remote_auth_data_source.dart';
 import 'package:reelio/features/auth/domain/entities/reelio_user.dart';
@@ -15,31 +16,32 @@ class AuthRepositoryImpl implements AuthRepository {
   final RemoteAuthDataSource _remoteDataSource;
 
   @override
-  Stream<ReelioUser> get user =>
-      _remoteDataSource.authStateChanges.asyncMap((firebaseUser) async {
-        if (firebaseUser == null) return ReelioUser.empty;
-        try {
-          return await _remoteDataSource.getUserProfile(firebaseUser.uid);
-        } on Exception {
-          AppLogger.instance.w(
-            'Auth user stream profile fallback for uid=${firebaseUser.uid}.',
-          );
-          return _basicUserFromFirebase(firebaseUser);
-        }
-      });
+  Stream<ReelioUser> get user => _remoteDataSource.userChanges.map(
+    (profile) => profile ?? ReelioUser.empty,
+  );
 
   @override
   FutureEitherVoid signUpWithEmail({
     required String email,
     required String password,
     required String fullName,
+    required String username,
   }) async {
+    final normalizedUsername = UsernameValidator.normalize(username);
+    final usernameError = UsernameValidator.validationError(normalizedUsername);
+    if (usernameError != null) {
+      return left(AuthFailure(usernameError));
+    }
+
+    User? createdUser;
+
     try {
       final credential = await _remoteDataSource.signUpWithEmail(
         email,
         password,
       );
       final firebaseUser = credential.user;
+      createdUser = firebaseUser;
       if (firebaseUser == null) {
         return left(
           const AuthFailure('Unable to create your account right now.'),
@@ -49,11 +51,15 @@ class AuthRepositoryImpl implements AuthRepository {
       final userModel = UserModel(
         uid: firebaseUser.uid,
         email: email,
+        username: normalizedUsername,
         displayName: fullName,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
-      await _remoteDataSource.createUserProfile(userModel);
+      await _remoteDataSource.createUserProfileWithUsername(
+        user: userModel,
+        username: normalizedUsername,
+      );
       return right(unit);
     } on FirebaseAuthException catch (error) {
       _logAuthException('signUpWithEmail', error);
@@ -67,6 +73,11 @@ class AuthRepositoryImpl implements AuthRepository {
       );
     } on FirebaseException catch (error) {
       _logFirestoreException('signUpWithEmail', error);
+
+      if (createdUser != null) {
+        await _cleanupFailedSignup(createdUser);
+      }
+
       return left(
         AuthFailure(
           _firestoreMessageForCode(
@@ -81,6 +92,11 @@ class AuthRepositoryImpl implements AuthRepository {
         error: error,
         stackTrace: stackTrace,
       );
+
+      if (createdUser != null) {
+        await _cleanupFailedSignup(createdUser);
+      }
+
       return left(
         const AuthFailure('Unable to create your account right now.'),
       );
@@ -196,6 +212,97 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  FutureEither<bool> isUsernameAvailable(String username) async {
+    final normalizedUsername = UsernameValidator.normalize(username);
+    final usernameError = UsernameValidator.validationError(normalizedUsername);
+    if (usernameError != null) {
+      return left(AuthFailure(usernameError));
+    }
+
+    try {
+      final isAvailable = await _remoteDataSource.isUsernameAvailable(
+        normalizedUsername,
+        currentUid: _remoteDataSource.currentUserId,
+      );
+      return right(isAvailable);
+    } on FirebaseException catch (error) {
+      _logFirestoreException('isUsernameAvailable', error);
+      return left(
+        AuthFailure(
+          _firestoreMessageForCode(
+            error.code,
+            fallback: 'Unable to verify username availability right now.',
+          ),
+        ),
+      );
+    } on Exception catch (error, stackTrace) {
+      AppLogger.instance.e(
+        'Unexpected username availability error.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return left(
+        const AuthFailure('Unable to verify username availability right now.'),
+      );
+    }
+  }
+
+  @override
+  FutureEitherVoid setUsername(String username) async {
+    final normalizedUsername = UsernameValidator.normalize(username);
+    final usernameError = UsernameValidator.validationError(normalizedUsername);
+    if (usernameError != null) {
+      return left(AuthFailure(usernameError));
+    }
+
+    final uid = _remoteDataSource.currentUserId;
+    if (uid == null) {
+      return left(
+        const AuthFailure('No active session found. Please sign in.'),
+      );
+    }
+
+    try {
+      await _remoteDataSource.setUsername(
+        uid: uid,
+        username: normalizedUsername,
+      );
+      return right(unit);
+    } on FirebaseAuthException catch (error) {
+      _logAuthException('setUsername', error);
+      return left(
+        AuthFailure(
+          _authMessageForCode(
+            error.code,
+            fallback: 'Unable to set username right now. Please try again.',
+          ),
+        ),
+      );
+    } on FirebaseException catch (error) {
+      _logFirestoreException('setUsername', error);
+      return left(
+        AuthFailure(
+          _firestoreMessageForCode(
+            error.code,
+            fallback: 'Unable to set username right now. Please try again.',
+          ),
+        ),
+      );
+    } on Exception catch (error, stackTrace) {
+      AppLogger.instance.e(
+        'Unexpected set username error.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return left(
+        const AuthFailure(
+          'Unable to set username right now. Please try again.',
+        ),
+      );
+    }
+  }
+
+  @override
   FutureEitherVoid signOut() async {
     try {
       await _remoteDataSource.signOut();
@@ -231,6 +338,28 @@ class AuthRepositoryImpl implements AuthRepository {
       displayName: firebaseUser.displayName,
       photoUrl: firebaseUser.photoURL,
     );
+  }
+
+  Future<void> _cleanupFailedSignup(User firebaseUser) async {
+    try {
+      await firebaseUser.delete();
+    } on Exception catch (error, stackTrace) {
+      AppLogger.instance.w(
+        'Failed to delete partially created user during signup cleanup.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    try {
+      await _remoteDataSource.signOut();
+    } on Exception catch (error, stackTrace) {
+      AppLogger.instance.w(
+        'Failed to sign out during signup cleanup.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   String _authMessageForCode(String code, {required String fallback}) {
@@ -269,6 +398,10 @@ class AuthRepositoryImpl implements AuthRepository {
 
   String _firestoreMessageForCode(String code, {required String fallback}) {
     switch (code) {
+      case 'username-taken':
+        return 'This username is already taken.';
+      case 'username-already-set':
+        return 'Username is already set for this account.';
       case 'permission-denied':
         return 'You do not have permission to complete this request.';
       case 'unavailable':

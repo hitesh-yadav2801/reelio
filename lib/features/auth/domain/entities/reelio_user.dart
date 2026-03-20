@@ -5,6 +5,7 @@ class ReelioUser extends Equatable {
   const ReelioUser({
     required this.uid,
     required this.email,
+    this.username = '',
     this.displayName,
     this.photoUrl,
     this.bio,
@@ -15,6 +16,7 @@ class ReelioUser extends Equatable {
   });
   final String uid;
   final String email;
+  final String username;
   final String? displayName;
   final String? photoUrl;
   final String? bio;
@@ -23,6 +25,8 @@ class ReelioUser extends Equatable {
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
+  bool get hasUsername => username.trim().isNotEmpty;
+
   /// Static constant for an unauthenticated user or empty state.
   static const empty = ReelioUser(uid: '', email: '');
 
@@ -30,6 +34,7 @@ class ReelioUser extends Equatable {
   List<Object?> get props => [
     uid,
     email,
+    username,
     displayName,
     photoUrl,
     bio,
