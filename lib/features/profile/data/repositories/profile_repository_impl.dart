@@ -4,7 +4,9 @@ import 'package:injectable/injectable.dart';
 import 'package:reelio/core/errors/failure.dart';
 import 'package:reelio/core/utils/typedefs.dart';
 import 'package:reelio/features/profile/data/sources/profile_remote_data_source.dart';
+import 'package:reelio/features/profile/domain/entities/profile_reel.dart';
 import 'package:reelio/features/profile/domain/entities/profile_user.dart';
+import 'package:reelio/features/profile/domain/entities/public_profile_user.dart';
 import 'package:reelio/features/profile/domain/repositories/profile_repository.dart';
 
 @LazySingleton(as: ProfileRepository)
@@ -27,6 +29,66 @@ class ProfileRepositoryImpl implements ProfileRepository {
       return left(AuthFailure(_mapAuthError(error)));
     } on FirebaseException catch (error) {
       return left(FirestoreFailure(error.message ?? 'Failed to load profile.'));
+    } on Exception catch (error) {
+      return left(ServerFailure(error.toString()));
+    }
+  }
+
+  @override
+  FutureEither<PublicProfileUser> getProfileByUsername(String username) async {
+    try {
+      final profile = await _remoteDataSource.getProfileByUsername(
+        username: username,
+      );
+      return right(profile);
+    } on FirebaseAuthException catch (error) {
+      return left(AuthFailure(_mapAuthError(error)));
+    } on FirebaseException catch (error) {
+      return left(FirestoreFailure(error.message ?? 'Failed to load profile.'));
+    } on Exception catch (error) {
+      return left(ServerFailure(error.toString()));
+    }
+  }
+
+  @override
+  FutureEither<List<ProfileReel>> getReelsByUserId({
+    required String userId,
+    int limit = 60,
+  }) async {
+    try {
+      final reels = await _remoteDataSource.getReelsByUserId(
+        userId: userId,
+        limit: limit,
+      );
+      return right(reels);
+    } on FirebaseAuthException catch (error) {
+      return left(AuthFailure(_mapAuthError(error)));
+    } on FirebaseException catch (error) {
+      return left(
+        FirestoreFailure(error.message ?? 'Failed to load user reels.'),
+      );
+    } on Exception catch (error) {
+      return left(ServerFailure(error.toString()));
+    }
+  }
+
+  @override
+  FutureEither<bool> toggleFollowUser({
+    required String targetUserId,
+    required bool currentlyFollowing,
+  }) async {
+    try {
+      final isFollowing = await _remoteDataSource.toggleFollowUser(
+        targetUserId: targetUserId,
+        currentlyFollowing: currentlyFollowing,
+      );
+      return right(isFollowing);
+    } on FirebaseAuthException catch (error) {
+      return left(AuthFailure(_mapAuthError(error)));
+    } on FirebaseException catch (error) {
+      return left(
+        FirestoreFailure(error.message ?? 'Failed to update follow status.'),
+      );
     } on Exception catch (error) {
       return left(ServerFailure(error.toString()));
     }
