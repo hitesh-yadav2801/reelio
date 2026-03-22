@@ -6,10 +6,7 @@ import 'package:reelio/features/upload/domain/entities/upload_reel_payload.dart'
 import 'package:reelio/features/upload/domain/repositories/upload_repository.dart';
 
 class SubmitReelParams extends Equatable {
-  const SubmitReelParams({
-    required this.payload,
-    this.onProgress,
-  });
+  const SubmitReelParams({required this.payload, this.onProgress});
 
   final UploadReelPayload payload;
   final void Function(double progress)? onProgress;
