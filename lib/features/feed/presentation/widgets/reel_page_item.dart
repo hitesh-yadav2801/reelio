@@ -48,6 +48,9 @@ class _ReelPageItemState extends State<ReelPageItem> {
   bool _isControllerLoading = true;
   bool _hasControllerError = false;
   bool _isBuffering = false;
+  bool _showPlaybackIndicator = false;
+  IconData _playbackIndicatorIcon = Icons.pause_rounded;
+  Timer? _playbackIndicatorTimer;
 
   @override
   void initState() {
@@ -76,6 +79,7 @@ class _ReelPageItemState extends State<ReelPageItem> {
 
   @override
   void dispose() {
+    _playbackIndicatorTimer?.cancel();
     _controller?.removeListener(_handleControllerUpdate);
     super.dispose();
   }
@@ -170,30 +174,115 @@ class _ReelPageItemState extends State<ReelPageItem> {
     }
   }
 
+  Future<void> _onReelTap() async {
+    if (!widget.isActive) {
+      return;
+    }
+
+    final controller = _controller;
+    if (controller == null || !_isControllerUsable(controller)) {
+      return;
+    }
+
+    final isInitialized = _safeIsInitialized(controller);
+    if (!isInitialized) {
+      return;
+    }
+
+    try {
+      if (controller.value.isPlaying) {
+        await controller.pause();
+        _showPlaybackStateIndicator(Icons.pause_rounded);
+      } else {
+        await controller.play();
+        _showPlaybackStateIndicator(Icons.play_arrow_rounded);
+      }
+    } on Exception {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _hasControllerError = true;
+      });
+    }
+  }
+
+  void _showPlaybackStateIndicator(IconData icon) {
+    _playbackIndicatorTimer?.cancel();
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _playbackIndicatorIcon = icon;
+      _showPlaybackIndicator = true;
+    });
+
+    _playbackIndicatorTimer = Timer(const Duration(milliseconds: 650), () {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _showPlaybackIndicator = false;
+      });
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = _controller;
 
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Positioned.fill(child: _buildVideoLayer(controller)),
-        const Positioned.fill(child: _LegibilityOverlay()),
-        ReelOverlay(
-          reel: widget.reel,
-          controller: controller,
-          onUsernameTap: widget.onUsernameTap,
-          onLikeTap: widget.onLikeTap,
-          onCommentTap: widget.onCommentTap,
-          onShareTap: widget.onShareTap,
-          isLiked: widget.isLiked,
-          isLikeLoading: widget.isLikeLoading,
-          likesCount: widget.likesCount,
-          commentsCount: widget.commentsCount,
-        ),
-        if (_isControllerLoading || _isBuffering)
-          const Positioned.fill(child: _BufferingIndicator()),
-      ],
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: _onReelTap,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Positioned.fill(child: _buildVideoLayer(controller)),
+          const Positioned.fill(child: _LegibilityOverlay()),
+          ReelOverlay(
+            reel: widget.reel,
+            controller: controller,
+            onUsernameTap: widget.onUsernameTap,
+            onLikeTap: widget.onLikeTap,
+            onCommentTap: widget.onCommentTap,
+            onShareTap: widget.onShareTap,
+            isLiked: widget.isLiked,
+            isLikeLoading: widget.isLikeLoading,
+            likesCount: widget.likesCount,
+            commentsCount: widget.commentsCount,
+          ),
+          if (_isControllerLoading || _isBuffering)
+            const Positioned.fill(child: _BufferingIndicator()),
+          Positioned.fill(
+            child: IgnorePointer(
+              child: AnimatedOpacity(
+                opacity: _showPlaybackIndicator ? 1 : 0,
+                duration: const Duration(milliseconds: 160),
+                child: Center(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.space12),
+                      child: Icon(
+                        _playbackIndicatorIcon,
+                        color: Colors.white,
+                        size: 34,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
