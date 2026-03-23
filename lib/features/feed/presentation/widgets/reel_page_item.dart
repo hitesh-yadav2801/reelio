@@ -15,6 +15,12 @@ class ReelPageItem extends StatefulWidget {
     required this.isActive,
     required this.preloadManager,
     required this.onUsernameTap,
+    required this.onLikeTap,
+    required this.onCommentTap,
+    required this.isLiked,
+    required this.likesCount,
+    required this.commentsCount,
+    this.isLikeLoading = false,
     super.key,
   });
 
@@ -23,6 +29,12 @@ class ReelPageItem extends StatefulWidget {
   final bool isActive;
   final VideoPreloadManager preloadManager;
   final VoidCallback onUsernameTap;
+  final VoidCallback onLikeTap;
+  final VoidCallback onCommentTap;
+  final bool isLiked;
+  final bool isLikeLoading;
+  final int likesCount;
+  final int commentsCount;
 
   @override
   State<ReelPageItem> createState() => _ReelPageItemState();
@@ -146,6 +158,12 @@ class _ReelPageItemState extends State<ReelPageItem> {
           reel: widget.reel,
           controller: controller,
           onUsernameTap: widget.onUsernameTap,
+          onLikeTap: widget.onLikeTap,
+          onCommentTap: widget.onCommentTap,
+          isLiked: widget.isLiked,
+          isLikeLoading: widget.isLikeLoading,
+          likesCount: widget.likesCount,
+          commentsCount: widget.commentsCount,
         ),
         if (_isControllerLoading || _isBuffering)
           const Positioned.fill(child: _BufferingIndicator()),
