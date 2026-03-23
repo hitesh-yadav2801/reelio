@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:reelio/core/theme/app_colors.dart';
 import 'package:reelio/core/theme/app_spacing.dart';
 import 'package:reelio/core/theme/app_typography.dart';
+import 'package:reelio/features/connectivity/presentation/bloc/connectivity_cubit.dart';
 
 class ReelioAppShell extends StatelessWidget {
   const ReelioAppShell({required this.navigationShell, super.key});
@@ -14,7 +16,27 @@ class ReelioAppShell extends StatelessWidget {
     final bottomInset = MediaQuery.paddingOf(context).bottom;
 
     return Scaffold(
-      body: navigationShell,
+      body: Stack(
+        children: [
+          navigationShell,
+          BlocBuilder<ConnectivityCubit, ConnectivityState>(
+            buildWhen: (previous, current) => previous.status != current.status,
+            builder: (context, state) {
+              final showOfflineBanner = state.isOffline;
+              final topInset = MediaQuery.paddingOf(context).top;
+
+              return AnimatedPositioned(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOut,
+                top: showOfflineBanner ? 0 : -(topInset + 44),
+                left: 0,
+                right: 0,
+                child: _OfflineBanner(topInset: topInset),
+              );
+            },
+          ),
+        ],
+      ),
       bottomNavigationBar: Container(
         height: 60 + bottomInset,
         padding: EdgeInsets.only(bottom: bottomInset),
@@ -55,6 +77,36 @@ class ReelioAppShell extends StatelessWidget {
     navigationShell.goBranch(
       index,
       initialLocation: index == navigationShell.currentIndex,
+    );
+  }
+}
+
+class _OfflineBanner extends StatelessWidget {
+  const _OfflineBanner({required this.topInset});
+
+  final double topInset;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.colorAccentAlert,
+      elevation: 3,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.space16,
+          topInset + AppSpacing.space8,
+          AppSpacing.space16,
+          AppSpacing.space8,
+        ),
+        child: Text(
+          'No internet connection',
+          textAlign: TextAlign.center,
+          style: AppTypography.bodyMedium.copyWith(
+            color: AppColors.colorTextOnAccent,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
     );
   }
 }

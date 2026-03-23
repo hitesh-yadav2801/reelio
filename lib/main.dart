@@ -7,7 +7,9 @@ import 'package:reelio/core/di/injection.dart';
 import 'package:reelio/core/router/app_router.dart';
 import 'package:reelio/core/theme/app_theme.dart';
 import 'package:reelio/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:reelio/features/connectivity/presentation/bloc/connectivity_cubit.dart';
 import 'package:reelio/firebase_options.dart';
+import 'package:reelio/shared/services/connectivity_service.dart';
 import 'package:reelio/shared/services/reel_upload_remote_config_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -26,6 +28,7 @@ void main() async {
     anonKey: SupabaseConfig.anonKey,
   );
   configureDependencies();
+  await getIt<ConnectivityService>().initialize();
   await getIt<ReelUploadRemoteConfigService>().initialize();
   runApp(const ReelioApp());
 }
@@ -35,8 +38,11 @@ class ReelioApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => getIt<AuthBloc>(),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (context) => getIt<AuthBloc>()),
+        BlocProvider(create: (context) => getIt<ConnectivityCubit>()),
+      ],
       child: Builder(
         builder: (context) {
           final authBloc = context.read<AuthBloc>();
