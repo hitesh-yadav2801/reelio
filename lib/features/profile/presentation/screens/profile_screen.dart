@@ -6,8 +6,11 @@ import 'package:reelio/core/theme/app_colors.dart';
 import 'package:reelio/core/theme/app_spacing.dart';
 import 'package:reelio/core/theme/app_typography.dart';
 import 'package:reelio/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:reelio/features/feed/domain/entities/reel.dart';
+import 'package:reelio/features/profile/domain/entities/profile_reel.dart';
 import 'package:reelio/features/profile/domain/entities/profile_user.dart';
 import 'package:reelio/features/profile/presentation/bloc/profile_cubit.dart';
+import 'package:reelio/features/profile/presentation/screens/profile_reels_player_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -35,6 +38,13 @@ class _ProfileView extends StatelessWidget {
             ScaffoldMessenger.of(
               context,
             ).showSnackBar(SnackBar(content: Text(state.errorMessage!)));
+          }
+
+          if (state.actionErrorMessage != null) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(state.actionErrorMessage!)));
+            context.read<ProfileCubit>().clearActionError();
           }
         },
         builder: (context, state) {
@@ -70,6 +80,7 @@ class _ProfileView extends StatelessWidget {
           }
 
           final user = state.user;
+          final reels = state.reels;
           return RefreshIndicator(
             onRefresh: () => context.read<ProfileCubit>().loadProfile(),
             child: ListView(
@@ -98,11 +109,54 @@ class _ProfileView extends StatelessWidget {
                     '/app/profile/change-password',
                     extra: user.canChangePassword,
                   ),
+                  reels: reels,
+                  onReelTap: (index) =>
+                      _openReelsPlayer(context, user, reels, index),
                 ),
               ],
             ),
           );
         },
+      ),
+    );
+  }
+
+  void _openReelsPlayer(
+    BuildContext context,
+    ProfileUser user,
+    List<ProfileReel> reels,
+    int initialIndex,
+  ) {
+    if (reels.isEmpty) {
+      return;
+    }
+
+    final normalizedUsername = user.username.trim().isEmpty
+        ? 'reelio_user'
+        : user.username;
+
+    final mappedReels = reels
+        .map(
+          (reel) => Reel(
+            id: reel.id,
+            userId: user.uid,
+            username: normalizedUsername,
+            userAvatarUrl: user.photoUrl,
+            videoUrl: reel.videoUrl,
+            thumbnailUrl: reel.thumbnailUrl,
+            caption: reel.caption,
+            likesCount: reel.likesCount,
+            commentsCount: reel.commentsCount,
+            createdAt: reel.createdAt,
+          ),
+        )
+        .toList(growable: false);
+
+    context.push(
+      '/profile-reels-player',
+      extra: ProfileReelsPlayerArgs(
+        reels: mappedReels,
+        initialIndex: initialIndex,
       ),
     );
   }
@@ -185,11 +239,15 @@ class _ProfileHeader extends StatelessWidget {
     required this.user,
     required this.onEditProfile,
     required this.onChangePassword,
+    required this.reels,
+    required this.onReelTap,
   });
 
   final ProfileUser user;
   final VoidCallback onEditProfile;
   final VoidCallback onChangePassword;
+  final List<ProfileReel> reels;
+  final ValueChanged<int> onReelTap;
 
   @override
   Widget build(BuildContext context) {
@@ -305,7 +363,7 @@ class _ProfileHeader extends StatelessWidget {
               ),
             ),
           const SizedBox(height: AppSpacing.space24),
-          _ReelsSection(reelsCount: user.reelsCount),
+          _ReelsSection(reels: reels, onReelTap: onReelTap),
         ],
       ),
     );
@@ -339,13 +397,14 @@ class _StatItem extends StatelessWidget {
 }
 
 class _ReelsSection extends StatelessWidget {
-  const _ReelsSection({required this.reelsCount});
+  const _ReelsSection({required this.reels, required this.onReelTap});
 
-  final int reelsCount;
+  final List<ProfileReel> reels;
+  final ValueChanged<int> onReelTap;
 
   @override
   Widget build(BuildContext context) {
-    if (reelsCount == 0) {
+    if (reels.isEmpty) {
       return Padding(
         padding: const EdgeInsets.only(top: AppSpacing.space32),
         child: Column(
@@ -370,19 +429,58 @@ class _ReelsSection extends StatelessWidget {
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: reelsCount,
+      itemCount: reels.length,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
         mainAxisSpacing: AppSpacing.space2,
         crossAxisSpacing: AppSpacing.space2,
       ),
       itemBuilder: (context, index) {
-        return const DecoratedBox(
-          decoration: BoxDecoration(color: AppColors.colorSurface),
-          child: Center(
-            child: Icon(
-              Icons.play_arrow_rounded,
-              color: AppColors.colorNeutralStone,
+        final reel = reels[index];
+        final thumbnailUrl = reel.thumbnailUrl;
+
+        if (thumbnailUrl != null && thumbnailUrl.isNotEmpty) {
+          return GestureDetector(
+            onTap: () => onReelTap(index),
+            child: DecoratedBox(
+              decoration: const BoxDecoration(color: AppColors.colorSurface),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.network(
+                    thumbnailUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => const Icon(
+                      Icons.play_arrow_rounded,
+                      color: AppColors.colorNeutralStone,
+                    ),
+                  ),
+                  const Align(
+                    alignment: Alignment.bottomRight,
+                    child: Padding(
+                      padding: EdgeInsets.all(AppSpacing.space4),
+                      child: Icon(
+                        Icons.play_arrow_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return GestureDetector(
+          onTap: () => onReelTap(index),
+          child: const DecoratedBox(
+            decoration: BoxDecoration(color: AppColors.colorSurface),
+            child: Center(
+              child: Icon(
+                Icons.play_arrow_rounded,
+                color: AppColors.colorNeutralStone,
+              ),
             ),
           ),
         );

@@ -373,6 +373,8 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
       return;
     }
 
+    unawaited(_preloadManager.pauseAll());
+
     final encoded = Uri.encodeComponent(sanitized);
     context.push('/profile/$encoded');
   }
