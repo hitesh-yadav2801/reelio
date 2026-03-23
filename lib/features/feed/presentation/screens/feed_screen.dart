@@ -13,6 +13,7 @@ import 'package:reelio/features/feed/presentation/widgets/feed_shimmer.dart';
 import 'package:reelio/features/feed/presentation/widgets/reel_page_item.dart';
 import 'package:reelio/features/likes/presentation/bloc/like_cubit.dart';
 import 'package:reelio/shared/services/video_preload_manager.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
@@ -36,6 +37,7 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
   static const Duration _shareSnackbarCooldown = Duration(seconds: 2);
   DateTime? _lastShareSnackbarAt;
   bool _isShareSnackbarVisible = false;
+  bool _isFeedVisible = true;
 
   @override
   void initState() {
@@ -129,76 +131,82 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
             }
           },
           builder: (context, state) {
-            return Scaffold(
-              backgroundColor: AppColors.colorBackground,
-              body: Stack(
-                children: [
-                  Positioned.fill(child: _buildFeedContent(context, state)),
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    child: IgnorePointer(
-                      child: Container(
-                        height: topInset + 72,
-                        decoration: const BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [Color(0x99000000), Color(0x00000000)],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    top: topInset + AppSpacing.space8,
-                    left: AppSpacing.space16,
-                    right: AppSpacing.space8,
-                    child: Row(
-                      children: [
-                        Text(
-                          'Reels',
-                          style: AppTypography.heading2.copyWith(
-                            color: Colors.white,
-                            shadows: const [
-                              Shadow(color: Color(0x80000000), blurRadius: 8),
-                            ],
-                          ),
-                        ),
-                        const Spacer(),
-                        IconButton(
-                          onPressed: () => context.push('/search'),
-                          icon: const Icon(Icons.search_rounded),
-                          color: Colors.white,
-                          tooltip: 'Search',
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (state.status == FeedStatus.loadingMore)
+            return VisibilityDetector(
+              key: const Key('feed-screen-visibility'),
+              onVisibilityChanged: _onVisibilityChanged,
+              child: Scaffold(
+                backgroundColor: AppColors.colorBackground,
+                body: Stack(
+                  children: [
+                    Positioned.fill(child: _buildFeedContent(context, state)),
                     Positioned(
+                      top: 0,
                       left: 0,
                       right: 0,
-                      bottom: 20,
-                      child: Center(
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.35),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: const Padding(
-                            padding: EdgeInsets.all(AppSpacing.space8),
-                            child: SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                      child: IgnorePointer(
+                        child: Container(
+                          height: topInset + 72,
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Color(0x99000000), Color(0x00000000)],
                             ),
                           ),
                         ),
                       ),
                     ),
-                ],
+                    Positioned(
+                      top: topInset + AppSpacing.space8,
+                      left: AppSpacing.space16,
+                      right: AppSpacing.space8,
+                      child: Row(
+                        children: [
+                          Text(
+                            'Reels',
+                            style: AppTypography.heading2.copyWith(
+                              color: Colors.white,
+                              shadows: const [
+                                Shadow(color: Color(0x80000000), blurRadius: 8),
+                              ],
+                            ),
+                          ),
+                          const Spacer(),
+                          IconButton(
+                            onPressed: () => context.push('/search'),
+                            icon: const Icon(Icons.search_rounded),
+                            color: Colors.white,
+                            tooltip: 'Search',
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (state.status == FeedStatus.loadingMore)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 20,
+                        child: Center(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.35),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: const Padding(
+                              padding: EdgeInsets.all(AppSpacing.space8),
+                              child: SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             );
           },
@@ -373,6 +381,8 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
       return;
     }
 
+    unawaited(_preloadManager.pauseAll());
+
     final encoded = Uri.encodeComponent(sanitized);
     context.push('/profile/$encoded');
   }
@@ -450,6 +460,21 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
         context.read<FeedCubit>().incrementCommentsCount(reelId);
       },
     );
+  }
+
+  void _onVisibilityChanged(VisibilityInfo info) {
+    final isVisibleNow = info.visibleFraction > 0.99;
+    if (isVisibleNow == _isFeedVisible) {
+      return;
+    }
+
+    _isFeedVisible = isVisibleNow;
+    if (isVisibleNow) {
+      unawaited(_resumeActiveReel());
+      return;
+    }
+
+    unawaited(_preloadManager.pauseAll());
   }
 }
 

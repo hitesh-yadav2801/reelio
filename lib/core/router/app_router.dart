@@ -11,6 +11,7 @@ import 'package:reelio/features/profile/domain/entities/profile_user.dart';
 import 'package:reelio/features/profile/presentation/screens/change_password_screen.dart';
 import 'package:reelio/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:reelio/features/profile/presentation/screens/profile_screen.dart';
+import 'package:reelio/features/profile/presentation/screens/profile_reels_player_screen.dart';
 import 'package:reelio/features/profile/presentation/screens/public_profile_screen.dart';
 import 'package:reelio/features/search/presentation/screens/search_screen.dart';
 import 'package:reelio/features/upload/presentation/screens/upload_screen.dart';
@@ -72,6 +73,17 @@ class AppRouter {
         builder: (context, state) {
           final username = state.pathParameters['username'] ?? '';
           return PublicProfileScreen(username: username);
+        },
+      ),
+      GoRoute(
+        path: '/profile-reels-player',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) {
+          final extra = state.extra;
+          if (extra is! ProfileReelsPlayerArgs) {
+            return const SizedBox.shrink();
+          }
+          return ProfileReelsPlayerScreen(args: extra);
         },
       ),
       GoRoute(path: '/', redirect: (context, state) => '/app/feed'),

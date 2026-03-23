@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:injectable/injectable.dart';
 import 'package:reelio/features/upload/domain/entities/upload_reel_payload.dart';
+import 'package:reelio/shared/services/reel_upload_remote_config_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class UploadedMediaObject {
@@ -44,10 +45,15 @@ abstract class UploadRemoteDataSource {
 
 @LazySingleton(as: UploadRemoteDataSource)
 class UploadRemoteDataSourceImpl implements UploadRemoteDataSource {
-  UploadRemoteDataSourceImpl(this._supabaseClient, this._firestore);
+  UploadRemoteDataSourceImpl(
+    this._supabaseClient,
+    this._firestore,
+    this._reelUploadRemoteConfigService,
+  );
 
   final SupabaseClient _supabaseClient;
   final FirebaseFirestore _firestore;
+  final ReelUploadRemoteConfigService _reelUploadRemoteConfigService;
 
   static const String _reelsBucket = 'reels';
   static const String _thumbnailsBucket = 'thumbnails';
@@ -67,6 +73,11 @@ class UploadRemoteDataSourceImpl implements UploadRemoteDataSource {
     void Function(double progress)? onProgress,
   }) async {
     _throwIfCanceled();
+    final fileSizeBytes = await videoFile.length();
+    if (fileSizeBytes > _reelUploadRemoteConfigService.maxReelFileSizeBytes) {
+      throw const StorageException('Video exceeds configured max file size.');
+    }
+
     final path = _videoPath(userId: userId, reelId: reelId);
     onProgress?.call(0.1);
 

@@ -10,6 +10,7 @@ import 'package:reelio/features/profile/domain/usecases/get_current_profile_usec
 import 'package:reelio/features/upload/domain/entities/upload_reel_payload.dart';
 import 'package:reelio/features/upload/domain/usecases/cancel_upload_usecase.dart';
 import 'package:reelio/features/upload/domain/usecases/submit_reel_usecase.dart';
+import 'package:reelio/shared/services/reel_upload_remote_config_service.dart';
 import 'package:reelio/shared/services/video_thumbnail_service.dart';
 import 'package:video_player/video_player.dart';
 
@@ -22,6 +23,7 @@ class UploadCubit extends Cubit<UploadState> {
     this._cancelUploadUseCase,
     this._getCurrentProfileUseCase,
     this._thumbnailService,
+    this._reelUploadRemoteConfigService,
     this._firebaseAuth,
   ) : super(const UploadState.initial());
 
@@ -29,6 +31,7 @@ class UploadCubit extends Cubit<UploadState> {
   final CancelUploadUseCase _cancelUploadUseCase;
   final GetCurrentProfileUseCase _getCurrentProfileUseCase;
   final VideoThumbnailService _thumbnailService;
+  final ReelUploadRemoteConfigService _reelUploadRemoteConfigService;
   final FirebaseAuth _firebaseAuth;
 
   final ImagePicker _picker = ImagePicker();
@@ -56,6 +59,21 @@ class UploadCubit extends Cubit<UploadState> {
       }
 
       final videoFile = File(picked.path);
+      final fileSizeBytes = await videoFile.length();
+      final maxFileSizeBytes =
+          _reelUploadRemoteConfigService.maxReelFileSizeBytes;
+      if (fileSizeBytes > maxFileSizeBytes) {
+        emit(
+          state.copyWith(
+            status: UploadStatus.error,
+            errorMessage:
+                'Video is too large. Max allowed size is '
+                '${_reelUploadRemoteConfigService.maxReelFileSizeMb} MB.',
+          ),
+        );
+        return;
+      }
+
       final duration = await _readDuration(videoFile);
       if (duration > _maxVideoDuration) {
         emit(

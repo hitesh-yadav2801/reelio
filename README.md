@@ -7,7 +7,7 @@ This repository follows a feature-first clean architecture with BLoC for state m
 ## Project Snapshot
 
 - Platform: Flutter (Android + iOS)
-- Backend: Firebase Auth + Cloud Firestore, Supabase Storage
+- Backend: Firebase Auth + Cloud Firestore, Supabase Storage, Firebase Remote Config
 - Architecture: Feature-first clean architecture (`data` -> `domain` -> `presentation`)
 - State management: `flutter_bloc`
 - Dependency injection: `get_it` + `injectable`
@@ -32,12 +32,23 @@ This repository follows a feature-first clean architecture with BLoC for state m
 - Vertical paged feed
 - Firestore-backed initial fetch + pagination
 - Pull-to-refresh
-- Video preloading and lifecycle-aware playback pause/resume
-- Cached video file fallback for smoother playback
+- Nearby-reel preloading (current reel + adjacent reels) for smoother swipes
+- Video controllers outside the active preload window are disposed to control memory
+- Disk cache strategy: up to 20 video files, stale after 3 days
+- Tap anywhere on reel to pause/play with temporary center indicator
+- Feed playback pauses when feed is not visible (tab/screen switches)
+- Feed playback pauses before navigating to profile from username tap
 
-4. Upload reel core
+4. Reels engagement
+- Like/unlike with optimistic UI update and rollback on failure
+- Like tap rate-limiting to reduce rapid repeated backend calls
+- Comments bottom sheet with pagination
+- Share action currently shows `Coming soon...` snackbar with anti-spam lock
+
+5. Upload reel core
 - Pick video from gallery
 - 60-second duration guard
+- File size guard from Firebase Remote Config (default fallback: 20 MB)
 - Thumbnail generation
 - Caption support (max length enforced)
 - Upload progress UI with cancel support
@@ -45,17 +56,21 @@ This repository follows a feature-first clean architecture with BLoC for state m
   - create reel document
   - increment `users.reelsCount`
 
-5. Profile (current user)
+6. Profile (current user)
 - Load profile from Firestore
 - Edit profile
 - Change password for email/password accounts
 - Display counters (`reelsCount`, followers, following)
+- Own profile reels grid
+- Tap own profile reel to open full-screen reels player
 
-6. Search and public profiles
+7. Search and public profiles
 - User search
 - Follow/unfollow from search and public profile
 - Public profile route by username
 - Public profile reels grid
+- Tap public profile reel to open full-screen reels player
+- Back navigation from player returns to profile context
 
 ## Architecture Overview
 
@@ -73,20 +88,20 @@ Primary folders:
 lib/
   core/
   features/
-	 auth/
-	 feed/
-	 upload/
-	 profile/
-	 search/
-		likes/
-		comments/
+	auth/
+	feed/
+	upload/
+	profile/
+	search/
+	likes/
+	comments/
   shared/
 ```
 
 ## Tech Stack
 
 - Flutter SDK: Dart 3
-- Firebase: `firebase_core`, `firebase_auth`, `cloud_firestore`
+- Firebase: `firebase_core`, `firebase_auth`, `cloud_firestore`, `firebase_remote_config`
 - Supabase: `supabase_flutter`
 - BLoC: `bloc`, `flutter_bloc`
 - DI: `get_it`, `injectable`, `injectable_generator`
@@ -101,6 +116,7 @@ lib/
 3. Firebase project with:
 	- Authentication (Email/Password + Google)
 	- Cloud Firestore
+	- Remote Config (for upload size limit)
 4. Supabase project with Storage buckets
 5. Dart/Flutter CLI tools available
 
@@ -120,6 +136,9 @@ flutterfire configure
 - iOS: `ios/Runner/GoogleService-Info.plist`
 
 4. Ensure generated `lib/firebase_options.dart` is present and up to date.
+
+5. Add Firebase Remote Config parameter:
+- `reel_file_size` (integer value in MB, example: `20`)
 
 If config files are not committed in your checkout, generate/add them before running.
 
@@ -215,6 +234,7 @@ High-level route behavior:
 4. Additional top-level routes:
 	- Search
 	- Public profile by username
+	- Profile reels player
 
 ## Firestore Data Notes
 
@@ -247,7 +267,13 @@ Suggested review path:
 5. Open Profile tab:
 	- verify user details and counters
 	- test edit profile
-6. Open Search:
+6. In Feed:
+	- test tap-to-pause/play behavior
+	- test like/comment/share actions
+7. In Profile/Public Profile:
+	- open reels grid item and verify full-screen player opens
+	- verify back returns to profile context
+8. Open Search:
 	- search users
 	- follow/unfollow
 	- open public profile

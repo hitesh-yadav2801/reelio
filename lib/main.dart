@@ -8,6 +8,7 @@ import 'package:reelio/core/router/app_router.dart';
 import 'package:reelio/core/theme/app_theme.dart';
 import 'package:reelio/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:reelio/firebase_options.dart';
+import 'package:reelio/shared/services/reel_upload_remote_config_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() async {
@@ -25,6 +26,7 @@ void main() async {
     anonKey: SupabaseConfig.anonKey,
   );
   configureDependencies();
+  await getIt<ReelUploadRemoteConfigService>().initialize();
   runApp(const ReelioApp());
 }
 

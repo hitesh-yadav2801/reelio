@@ -5,9 +5,11 @@ import 'package:reelio/core/di/injection.dart';
 import 'package:reelio/core/theme/app_colors.dart';
 import 'package:reelio/core/theme/app_spacing.dart';
 import 'package:reelio/core/theme/app_typography.dart';
+import 'package:reelio/features/feed/domain/entities/reel.dart';
 import 'package:reelio/features/profile/domain/entities/profile_reel.dart';
 import 'package:reelio/features/profile/domain/entities/public_profile_user.dart';
 import 'package:reelio/features/profile/presentation/bloc/public_profile_cubit.dart';
+import 'package:reelio/features/profile/presentation/screens/profile_reels_player_screen.dart';
 
 class PublicProfileScreen extends StatelessWidget {
   const PublicProfileScreen({required this.username, super.key});
@@ -92,12 +94,52 @@ class _PublicProfileView extends StatelessWidget {
                       context.read<PublicProfileCubit>().toggleFollow(),
                 ),
                 const SizedBox(height: AppSpacing.space24),
-                _ReelsGrid(reels: state.reels),
+                _ReelsGrid(
+                  reels: state.reels,
+                  onReelTap: (index) =>
+                      _openReelsPlayer(context, user, state.reels, index),
+                ),
                 const SizedBox(height: AppSpacing.space24),
               ],
             ),
           );
         },
+      ),
+    );
+  }
+
+  void _openReelsPlayer(
+    BuildContext context,
+    PublicProfileUser user,
+    List<ProfileReel> reels,
+    int initialIndex,
+  ) {
+    if (reels.isEmpty) {
+      return;
+    }
+
+    final mappedReels = reels
+        .map(
+          (reel) => Reel(
+            id: reel.id,
+            userId: user.uid,
+            username: user.username,
+            userAvatarUrl: user.photoUrl,
+            videoUrl: reel.videoUrl,
+            thumbnailUrl: reel.thumbnailUrl,
+            caption: reel.caption,
+            likesCount: reel.likesCount,
+            commentsCount: reel.commentsCount,
+            createdAt: reel.createdAt,
+          ),
+        )
+        .toList(growable: false);
+
+    context.push(
+      '/profile-reels-player',
+      extra: ProfileReelsPlayerArgs(
+        reels: mappedReels,
+        initialIndex: initialIndex,
       ),
     );
   }
@@ -256,9 +298,10 @@ class _Stat extends StatelessWidget {
 }
 
 class _ReelsGrid extends StatelessWidget {
-  const _ReelsGrid({required this.reels});
+  const _ReelsGrid({required this.reels, required this.onReelTap});
 
   final List<ProfileReel> reels;
+  final ValueChanged<int> onReelTap;
 
   @override
   Widget build(BuildContext context) {
@@ -298,41 +341,47 @@ class _ReelsGrid extends StatelessWidget {
         final thumbnailUrl = reel.thumbnailUrl;
 
         if (thumbnailUrl != null && thumbnailUrl.isNotEmpty) {
-          return DecoratedBox(
-            decoration: const BoxDecoration(color: AppColors.colorSurface),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Image.network(
-                  thumbnailUrl,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => const Icon(
-                    Icons.play_arrow_rounded,
-                    color: AppColors.colorNeutralStone,
-                  ),
-                ),
-                const Align(
-                  alignment: Alignment.bottomRight,
-                  child: Padding(
-                    padding: EdgeInsets.all(AppSpacing.space4),
-                    child: Icon(
+          return GestureDetector(
+            onTap: () => onReelTap(index),
+            child: DecoratedBox(
+              decoration: const BoxDecoration(color: AppColors.colorSurface),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.network(
+                    thumbnailUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => const Icon(
                       Icons.play_arrow_rounded,
-                      color: Colors.white,
-                      size: 20,
+                      color: AppColors.colorNeutralStone,
                     ),
                   ),
-                ),
-              ],
+                  const Align(
+                    alignment: Alignment.bottomRight,
+                    child: Padding(
+                      padding: EdgeInsets.all(AppSpacing.space4),
+                      child: Icon(
+                        Icons.play_arrow_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         }
 
-        return const DecoratedBox(
-          decoration: BoxDecoration(color: AppColors.colorSurface),
-          child: Center(
-            child: Icon(
-              Icons.play_arrow_rounded,
-              color: AppColors.colorNeutralStone,
+        return GestureDetector(
+          onTap: () => onReelTap(index),
+          child: const DecoratedBox(
+            decoration: BoxDecoration(color: AppColors.colorSurface),
+            child: Center(
+              child: Icon(
+                Icons.play_arrow_rounded,
+                color: AppColors.colorNeutralStone,
+              ),
             ),
           ),
         );
