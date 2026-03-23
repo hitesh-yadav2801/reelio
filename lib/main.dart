@@ -40,7 +40,7 @@ class ReelioApp extends StatelessWidget {
       child: Builder(
         builder: (context) {
           final authBloc = context.read<AuthBloc>();
-          final appRouter = AppRouter(authBloc);
+          final appRouter = AppRouter(authBloc, AppLaunchGate());
 
           return MaterialApp.router(
             title: 'Reelio',

@@ -10,30 +10,54 @@ import 'package:reelio/features/feed/presentation/screens/feed_screen.dart';
 import 'package:reelio/features/profile/domain/entities/profile_user.dart';
 import 'package:reelio/features/profile/presentation/screens/change_password_screen.dart';
 import 'package:reelio/features/profile/presentation/screens/edit_profile_screen.dart';
-import 'package:reelio/features/profile/presentation/screens/profile_screen.dart';
 import 'package:reelio/features/profile/presentation/screens/profile_reels_player_screen.dart';
+import 'package:reelio/features/profile/presentation/screens/profile_screen.dart';
 import 'package:reelio/features/profile/presentation/screens/public_profile_screen.dart';
 import 'package:reelio/features/search/presentation/screens/search_screen.dart';
+import 'package:reelio/features/splash/presentation/screens/splash_screen.dart';
 import 'package:reelio/features/upload/presentation/screens/upload_screen.dart';
 import 'package:reelio/shared/widgets/reelio_app_shell.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
 class AppRouter {
-  AppRouter(this.authBloc);
+  AppRouter(this.authBloc, this.launchGate);
 
   final AuthBloc authBloc;
+  final AppLaunchGate launchGate;
 
   late final GoRouter router = GoRouter(
     navigatorKey: rootNavigatorKey,
-    initialLocation: '/app/feed',
-    refreshListenable: _GoRouterRefreshStream(authBloc.stream),
+    initialLocation: '/splash',
+    refreshListenable: Listenable.merge([
+      _GoRouterRefreshStream(authBloc.stream),
+      launchGate,
+    ]),
     redirect: (context, state) {
       final authState = authBloc.state;
+      final isSplashRoute = state.matchedLocation == '/splash';
       final isAuthRoute =
           state.matchedLocation == '/login' ||
           state.matchedLocation == '/signup';
       final isUsernameSetupRoute = state.matchedLocation == '/pick-username';
+
+      // Keep startup deterministic: show splash until both minimum splash time
+      // and auth resolution are complete.
+      if (!launchGate.isReady ||
+          authState.status == AuthStatus.initial ||
+          authState.status == AuthStatus.loading) {
+        return isSplashRoute ? null : '/splash';
+      }
+
+      if (isSplashRoute) {
+        if (authState.status == AuthStatus.unauthenticated) {
+          return '/login';
+        }
+
+        if (authState.status == AuthStatus.authenticated) {
+          return authState.user.hasUsername ? '/app/feed' : '/pick-username';
+        }
+      }
 
       if (authState.status == AuthStatus.unauthenticated) {
         return isAuthRoute ? null : '/login';
@@ -53,6 +77,12 @@ class AppRouter {
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/splash',
+        builder: (context, state) {
+          return SplashScreen(onFinished: launchGate.markReady);
+        },
+      ),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(
         path: '/signup',
@@ -158,5 +188,19 @@ class _GoRouterRefreshStream extends ChangeNotifier {
   void dispose() {
     _subscription.cancel();
     super.dispose();
+  }
+}
+
+class AppLaunchGate extends ChangeNotifier {
+  bool _isReady = false;
+
+  bool get isReady => _isReady;
+
+  void markReady() {
+    if (_isReady) {
+      return;
+    }
+    _isReady = true;
+    notifyListeners();
   }
 }
