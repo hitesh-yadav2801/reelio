@@ -20,7 +20,7 @@ class ConnectivityState extends Equatable {
 @injectable
 class ConnectivityCubit extends Cubit<ConnectivityState> {
   ConnectivityCubit(this._connectivityService)
-      : super(ConnectivityState(status: _connectivityService.currentStatus)) {
+    : super(ConnectivityState(status: _connectivityService.currentStatus)) {
     _subscription = _connectivityService.statusStream.listen((status) {
       emit(ConnectivityState(status: status));
     });

@@ -35,12 +35,21 @@ class LikeCubit extends Cubit<LikeState> {
     final finalLoading = {...state.loadingReelIds}..remove(reelId);
 
     result.fold(
-      (failure) => emit(
-        state.copyWith(
-          loadingReelIds: finalLoading,
-          actionErrorMessage: failure.message,
-        ),
-      ),
+      (_) {
+        // Background like-status prefetch should not surface user-facing
+        // errors (for example, one snackbar per reel when opening offline).
+        // Store a safe default so we don't keep retrying per item rebuild.
+        final nextMap = {...state.likedByReel}
+          ..putIfAbsent(reelId, () => false);
+
+        emit(
+          state.copyWith(
+            likedByReel: nextMap,
+            loadingReelIds: finalLoading,
+            clearActionError: true,
+          ),
+        );
+      },
       (isLiked) {
         final nextMap = {...state.likedByReel, reelId: isLiked};
         emit(
