@@ -46,20 +46,14 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              'Reelio',
-              style: AppTypography.display.copyWith(fontSize: 32),
-            ),
+            Text('Reelio', style: AppTypography.display.copyWith(fontSize: 32)),
             const SizedBox(height: 16),
             TweenAnimationBuilder<double>(
               tween: Tween<double>(begin: 0, end: 120),
               duration: _lineAnimationDuration,
               curve: Curves.easeInOut,
               builder: (context, width, child) {
-                return SizedBox(
-                  width: width,
-                  child: child,
-                );
+                return SizedBox(width: width, child: child);
               },
               child: Container(
                 height: 2,
