@@ -42,6 +42,7 @@ class ReelPageItem extends StatefulWidget {
 
 class _ReelPageItemState extends State<ReelPageItem> {
   VideoPlayerController? _controller;
+  int _attachRequestId = 0;
   bool _isControllerLoading = true;
   bool _hasControllerError = false;
   bool _isBuffering = false;
@@ -78,9 +79,15 @@ class _ReelPageItemState extends State<ReelPageItem> {
   }
 
   Future<void> _attachController() async {
+    final requestId = ++_attachRequestId;
+
+    _controller?.removeListener(_handleControllerUpdate);
+    _controller = null;
+
     setState(() {
       _isControllerLoading = true;
       _hasControllerError = false;
+      _isBuffering = false;
     });
 
     try {
@@ -89,18 +96,19 @@ class _ReelPageItemState extends State<ReelPageItem> {
         videoUrl: widget.reel.videoUrl,
       );
 
-      if (!mounted) {
+      if (!mounted ||
+          requestId != _attachRequestId ||
+          !_isControllerUsable(controller)) {
         return;
       }
 
-      _controller?.removeListener(_handleControllerUpdate);
       _controller = controller;
-      _controller?.addListener(_handleControllerUpdate);
+      controller.addListener(_handleControllerUpdate);
 
       setState(() {
         _isControllerLoading = false;
         _hasControllerError = false;
-        _isBuffering = controller.value.isBuffering;
+        _isBuffering = _safeIsBuffering(controller);
       });
 
       await _syncPlayback();
@@ -118,11 +126,11 @@ class _ReelPageItemState extends State<ReelPageItem> {
 
   void _handleControllerUpdate() {
     final controller = _controller;
-    if (!mounted || controller == null) {
+    if (!mounted || controller == null || !_isControllerUsable(controller)) {
       return;
     }
 
-    final isBuffering = controller.value.isBuffering;
+    final isBuffering = _safeIsBuffering(controller);
     if (isBuffering == _isBuffering) {
       return;
     }
@@ -134,14 +142,29 @@ class _ReelPageItemState extends State<ReelPageItem> {
 
   Future<void> _syncPlayback() async {
     final controller = _controller;
-    if (controller == null || !controller.value.isInitialized) {
+    if (controller == null || !_isControllerUsable(controller)) {
       return;
     }
 
-    if (widget.isActive) {
-      await controller.play();
-    } else {
-      await controller.pause();
+    final isInitialized = _safeIsInitialized(controller);
+    if (!isInitialized) {
+      return;
+    }
+
+    try {
+      if (widget.isActive) {
+        await controller.play();
+      } else {
+        await controller.pause();
+      }
+    } on Exception {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _hasControllerError = true;
+      });
     }
   }
 
@@ -176,7 +199,17 @@ class _ReelPageItemState extends State<ReelPageItem> {
       return const _VideoErrorState();
     }
 
-    if (controller == null || !controller.value.isInitialized) {
+    if (controller == null || !_isControllerUsable(controller)) {
+      return const ColoredBox(color: Color(0xFF1A1A1A));
+    }
+
+    final isInitialized = _safeIsInitialized(controller);
+    if (!isInitialized) {
+      return const ColoredBox(color: Color(0xFF1A1A1A));
+    }
+
+    final size = _safeControllerSize(controller);
+    if (size == null || size.width == 0 || size.height == 0) {
       return const ColoredBox(color: Color(0xFF1A1A1A));
     }
 
@@ -185,12 +218,45 @@ class _ReelPageItemState extends State<ReelPageItem> {
       child: FittedBox(
         fit: BoxFit.cover,
         child: SizedBox(
-          width: controller.value.size.width,
-          height: controller.value.size.height,
+          width: size.width,
+          height: size.height,
           child: VideoPlayer(controller),
         ),
       ),
     );
+  }
+
+  bool _isControllerUsable(VideoPlayerController controller) {
+    try {
+      controller.value;
+      return true;
+    } on Object {
+      return false;
+    }
+  }
+
+  bool _safeIsInitialized(VideoPlayerController controller) {
+    try {
+      return controller.value.isInitialized;
+    } on Object {
+      return false;
+    }
+  }
+
+  bool _safeIsBuffering(VideoPlayerController controller) {
+    try {
+      return controller.value.isBuffering;
+    } on Object {
+      return false;
+    }
+  }
+
+  Size? _safeControllerSize(VideoPlayerController controller) {
+    try {
+      return controller.value.size;
+    } on Object {
+      return null;
+    }
   }
 }
 

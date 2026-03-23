@@ -24,9 +24,13 @@ class FeedScreen extends StatefulWidget {
 class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
   late final PageController _pageController;
   late final VideoPreloadManager _preloadManager;
+  late final FeedCubit _feedCubit;
+  late final LikeCubit _likeCubit;
 
   int _activeIndex = 0;
+  int _feedGeneration = 0;
   String _playbackBootstrapToken = '';
+  bool _isResettingFeedControllers = false;
 
   @override
   void initState() {
@@ -34,12 +38,16 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _pageController = PageController();
     _preloadManager = getIt<VideoPreloadManager>();
+    _feedCubit = getIt<FeedCubit>()..fetchInitial();
+    _likeCubit = getIt<LikeCubit>();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _pageController.dispose();
+    _feedCubit.close();
+    _likeCubit.close();
     unawaited(_preloadManager.resetAndDispose());
     super.dispose();
   }
@@ -63,7 +71,7 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
       return;
     }
 
-    final feedState = context.read<FeedCubit>().state;
+    final feedState = _feedCubit.state;
     if (feedState.reels.isEmpty) {
       return;
     }
@@ -81,8 +89,8 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
 
     return MultiBlocProvider(
       providers: [
-        BlocProvider(create: (_) => getIt<FeedCubit>()..fetchInitial()),
-        BlocProvider(create: (_) => getIt<LikeCubit>()),
+        BlocProvider<FeedCubit>.value(value: _feedCubit),
+        BlocProvider<LikeCubit>.value(value: _likeCubit),
       ],
       child: MultiBlocListener(
         listeners: [
@@ -195,6 +203,10 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildFeedContent(BuildContext context, FeedState state) {
+    if (_isResettingFeedControllers) {
+      return const FeedShimmer();
+    }
+
     if ((state.status == FeedStatus.initial ||
             state.status == FeedStatus.loading) &&
         state.reels.isEmpty) {
@@ -215,14 +227,31 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
     return RefreshIndicator(
       onRefresh: () async {
         final feedCubit = context.read<FeedCubit>();
+
+        setState(() {
+          _isResettingFeedControllers = true;
+        });
+
+        // Let current reel widgets unmount before disposing controllers.
+        await WidgetsBinding.instance.endOfFrame;
+
         await _preloadManager.resetAndDispose();
         if (!context.mounted) {
           return;
         }
 
         _activeIndex = 0;
+        _feedGeneration++;
         _playbackBootstrapToken = '';
         await feedCubit.refresh();
+
+        if (!mounted) {
+          return;
+        }
+
+        setState(() {
+          _isResettingFeedControllers = false;
+        });
       },
       child: PageView.builder(
         controller: _pageController,
@@ -246,6 +275,7 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
               );
 
               return ReelPageItem(
+                key: ValueKey('${reel.id}:$index:$_feedGeneration'),
                 index: index,
                 reel: reel,
                 isActive: index == _activeIndex,
