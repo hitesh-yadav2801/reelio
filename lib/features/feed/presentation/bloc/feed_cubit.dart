@@ -150,4 +150,54 @@ class FeedCubit extends Cubit<FeedState> {
 
     emit(state.copyWith(clearActionError: true));
   }
+
+  void updateLikeCount(String reelId, int delta) {
+    _updateReelById(reelId, (reel) {
+      final nextCount = (reel.likesCount + delta).clamp(0, 1 << 30);
+      return Reel(
+        id: reel.id,
+        userId: reel.userId,
+        username: reel.username,
+        userAvatarUrl: reel.userAvatarUrl,
+        videoUrl: reel.videoUrl,
+        thumbnailUrl: reel.thumbnailUrl,
+        caption: reel.caption,
+        likesCount: nextCount,
+        commentsCount: reel.commentsCount,
+        createdAt: reel.createdAt,
+      );
+    });
+  }
+
+  void incrementCommentsCount(String reelId) {
+    _updateReelById(reelId, (reel) {
+      return Reel(
+        id: reel.id,
+        userId: reel.userId,
+        username: reel.username,
+        userAvatarUrl: reel.userAvatarUrl,
+        videoUrl: reel.videoUrl,
+        thumbnailUrl: reel.thumbnailUrl,
+        caption: reel.caption,
+        likesCount: reel.likesCount,
+        commentsCount: reel.commentsCount + 1,
+        createdAt: reel.createdAt,
+      );
+    });
+  }
+
+  void _updateReelById(String reelId, Reel Function(Reel reel) updater) {
+    if (reelId.trim().isEmpty || state.reels.isEmpty) {
+      return;
+    }
+
+    final index = state.reels.indexWhere((reel) => reel.id == reelId);
+    if (index == -1) {
+      return;
+    }
+
+    final updated = [...state.reels];
+    updated[index] = updater(updated[index]);
+    emit(state.copyWith(reels: updated));
+  }
 }

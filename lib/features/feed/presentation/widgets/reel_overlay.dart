@@ -8,13 +8,27 @@ class ReelOverlay extends StatelessWidget {
   const ReelOverlay({
     required this.reel,
     required this.onUsernameTap,
+    required this.onLikeTap,
+    required this.onCommentTap,
+    required this.onShareTap,
+    required this.isLiked,
+    required this.likesCount,
+    required this.commentsCount,
     this.controller,
+    this.isLikeLoading = false,
     super.key,
   });
 
   final Reel reel;
   final VideoPlayerController? controller;
   final VoidCallback onUsernameTap;
+  final VoidCallback onLikeTap;
+  final VoidCallback onCommentTap;
+  final VoidCallback onShareTap;
+  final bool isLiked;
+  final bool isLikeLoading;
+  final int likesCount;
+  final int commentsCount;
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +45,15 @@ class ReelOverlay extends StatelessWidget {
                   child: _ReelDetails(reel: reel, onUsernameTap: onUsernameTap),
                 ),
                 const SizedBox(width: AppSpacing.space16),
-                _ActionColumn(reel: reel),
+                _ActionColumn(
+                  isLiked: isLiked,
+                  isLikeLoading: isLikeLoading,
+                  likesCount: likesCount,
+                  commentsCount: commentsCount,
+                  onLikeTap: onLikeTap,
+                  onCommentTap: onCommentTap,
+                  onShareTap: onShareTap,
+                ),
               ],
             ),
             const SizedBox(height: AppSpacing.space16),
@@ -86,9 +108,23 @@ class _ReelDetails extends StatelessWidget {
 }
 
 class _ActionColumn extends StatelessWidget {
-  const _ActionColumn({required this.reel});
+  const _ActionColumn({
+    required this.isLiked,
+    required this.isLikeLoading,
+    required this.likesCount,
+    required this.commentsCount,
+    required this.onLikeTap,
+    required this.onCommentTap,
+    required this.onShareTap,
+  });
 
-  final Reel reel;
+  final bool isLiked;
+  final bool isLikeLoading;
+  final int likesCount;
+  final int commentsCount;
+  final VoidCallback onLikeTap;
+  final VoidCallback onCommentTap;
+  final VoidCallback onShareTap;
 
   @override
   Widget build(BuildContext context) {
@@ -96,16 +132,25 @@ class _ActionColumn extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         _ActionItem(
-          icon: Icons.favorite_border_rounded,
-          label: _formatCount(reel.likesCount),
+          icon: isLiked
+              ? Icons.favorite_rounded
+              : Icons.favorite_border_rounded,
+          iconColor: isLiked ? const Color(0xFFFF4D6D) : Colors.white,
+          label: _formatCount(likesCount),
+          onTap: isLikeLoading ? null : onLikeTap,
         ),
         const SizedBox(height: AppSpacing.space16),
         _ActionItem(
           icon: Icons.chat_bubble_outline_rounded,
-          label: _formatCount(reel.commentsCount),
+          label: _formatCount(commentsCount),
+          onTap: onCommentTap,
         ),
         const SizedBox(height: AppSpacing.space16),
-        const _ActionItem(icon: Icons.ios_share_rounded, label: 'Share'),
+        _ActionItem(
+          icon: Icons.ios_share_rounded,
+          label: 'Share',
+          onTap: onShareTap,
+        ),
       ],
     );
   }
@@ -122,31 +167,42 @@ class _ActionColumn extends StatelessWidget {
 }
 
 class _ActionItem extends StatelessWidget {
-  const _ActionItem({required this.icon, required this.label});
+  const _ActionItem({
+    required this.icon,
+    required this.label,
+    this.iconColor = Colors.white,
+    this.onTap,
+  });
 
   final IconData icon;
   final String label;
+  final Color iconColor;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          icon,
-          size: 30,
-          color: Colors.white,
-          shadows: const [Shadow(color: Color(0x80000000), blurRadius: 8)],
-        ),
-        const SizedBox(height: AppSpacing.space4),
-        Text(
-          label,
-          style: AppTypography.caption.copyWith(
-            color: Colors.white,
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 30,
+            color: iconColor,
             shadows: const [Shadow(color: Color(0x80000000), blurRadius: 8)],
           ),
-        ),
-      ],
+          const SizedBox(height: AppSpacing.space4),
+          Text(
+            label,
+            style: AppTypography.caption.copyWith(
+              color: Colors.white,
+              shadows: const [Shadow(color: Color(0x80000000), blurRadius: 8)],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

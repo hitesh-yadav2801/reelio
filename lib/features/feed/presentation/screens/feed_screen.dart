@@ -7,9 +7,11 @@ import 'package:reelio/core/di/injection.dart';
 import 'package:reelio/core/theme/app_colors.dart';
 import 'package:reelio/core/theme/app_spacing.dart';
 import 'package:reelio/core/theme/app_typography.dart';
+import 'package:reelio/features/comments/presentation/widgets/comments_bottom_sheet.dart';
 import 'package:reelio/features/feed/presentation/bloc/feed_cubit.dart';
 import 'package:reelio/features/feed/presentation/widgets/feed_shimmer.dart';
 import 'package:reelio/features/feed/presentation/widgets/reel_page_item.dart';
+import 'package:reelio/features/likes/presentation/bloc/like_cubit.dart';
 import 'package:reelio/shared/services/video_preload_manager.dart';
 
 class FeedScreen extends StatefulWidget {
@@ -22,9 +24,18 @@ class FeedScreen extends StatefulWidget {
 class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
   late final PageController _pageController;
   late final VideoPreloadManager _preloadManager;
+  late final FeedCubit _feedCubit;
+  late final LikeCubit _likeCubit;
 
   int _activeIndex = 0;
+  int _feedGeneration = 0;
   String _playbackBootstrapToken = '';
+  bool _isResettingFeedControllers = false;
+  final Map<String, DateTime> _lastLikeTapByReel = {};
+  static const Duration _likeTapCooldown = Duration(milliseconds: 900);
+  static const Duration _shareSnackbarCooldown = Duration(seconds: 2);
+  DateTime? _lastShareSnackbarAt;
+  bool _isShareSnackbarVisible = false;
 
   @override
   void initState() {
@@ -32,12 +43,16 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _pageController = PageController();
     _preloadManager = getIt<VideoPreloadManager>();
+    _feedCubit = getIt<FeedCubit>()..fetchInitial();
+    _likeCubit = getIt<LikeCubit>();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _pageController.dispose();
+    _feedCubit.close();
+    _likeCubit.close();
     unawaited(_preloadManager.resetAndDispose());
     super.dispose();
   }
@@ -61,7 +76,7 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
       return;
     }
 
-    final feedState = context.read<FeedCubit>().state;
+    final feedState = _feedCubit.state;
     if (feedState.reels.isEmpty) {
       return;
     }
@@ -77,105 +92,126 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final topInset = MediaQuery.paddingOf(context).top;
 
-    return BlocProvider(
-      create: (_) => getIt<FeedCubit>()..fetchInitial(),
-      child: BlocConsumer<FeedCubit, FeedState>(
-        listener: (context, state) {
-          if (state.actionErrorMessage != null) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text(state.actionErrorMessage!)));
-            context.read<FeedCubit>().clearActionError();
-          }
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<FeedCubit>.value(value: _feedCubit),
+        BlocProvider<LikeCubit>.value(value: _likeCubit),
+      ],
+      child: MultiBlocListener(
+        listeners: [
+          BlocListener<LikeCubit, LikeState>(
+            listener: (context, state) {
+              if (state.actionErrorMessage != null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(state.actionErrorMessage!)),
+                );
+                context.read<LikeCubit>().clearActionError();
+              }
+            },
+          ),
+        ],
+        child: BlocConsumer<FeedCubit, FeedState>(
+          listener: (context, state) {
+            if (state.actionErrorMessage != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(state.actionErrorMessage!)),
+              );
+              context.read<FeedCubit>().clearActionError();
+            }
 
-          if (state.status == FeedStatus.refreshing) {
-            _playbackBootstrapToken = '';
-            return;
-          }
+            if (state.status == FeedStatus.refreshing) {
+              _playbackBootstrapToken = '';
+              return;
+            }
 
-          if (state.status == FeedStatus.loaded && state.reels.isNotEmpty) {
-            _bootstrapPlaybackIfNeeded(state);
-          }
-        },
-        builder: (context, state) {
-          return Scaffold(
-            backgroundColor: AppColors.colorBackground,
-            body: Stack(
-              children: [
-                Positioned.fill(child: _buildFeedContent(context, state)),
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: IgnorePointer(
-                    child: Container(
-                      height: topInset + 72,
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [Color(0x99000000), Color(0x00000000)],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: topInset + AppSpacing.space8,
-                  left: AppSpacing.space16,
-                  right: AppSpacing.space8,
-                  child: Row(
-                    children: [
-                      Text(
-                        'Reels',
-                        style: AppTypography.heading2.copyWith(
-                          color: Colors.white,
-                          shadows: const [
-                            Shadow(color: Color(0x80000000), blurRadius: 8),
-                          ],
-                        ),
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        onPressed: () => context.push('/search'),
-                        icon: const Icon(Icons.search_rounded),
-                        color: Colors.white,
-                        tooltip: 'Search',
-                      ),
-                    ],
-                  ),
-                ),
-                if (state.status == FeedStatus.loadingMore)
+            if (state.status == FeedStatus.loaded && state.reels.isNotEmpty) {
+              _bootstrapPlaybackIfNeeded(state);
+            }
+          },
+          builder: (context, state) {
+            return Scaffold(
+              backgroundColor: AppColors.colorBackground,
+              body: Stack(
+                children: [
+                  Positioned.fill(child: _buildFeedContent(context, state)),
                   Positioned(
+                    top: 0,
                     left: 0,
                     right: 0,
-                    bottom: 20,
-                    child: Center(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.35),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: const Padding(
-                          padding: EdgeInsets.all(AppSpacing.space8),
-                          child: SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                    child: IgnorePointer(
+                      child: Container(
+                        height: topInset + 72,
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [Color(0x99000000), Color(0x00000000)],
                           ),
                         ),
                       ),
                     ),
                   ),
-              ],
-            ),
-          );
-        },
+                  Positioned(
+                    top: topInset + AppSpacing.space8,
+                    left: AppSpacing.space16,
+                    right: AppSpacing.space8,
+                    child: Row(
+                      children: [
+                        Text(
+                          'Reels',
+                          style: AppTypography.heading2.copyWith(
+                            color: Colors.white,
+                            shadows: const [
+                              Shadow(color: Color(0x80000000), blurRadius: 8),
+                            ],
+                          ),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          onPressed: () => context.push('/search'),
+                          icon: const Icon(Icons.search_rounded),
+                          color: Colors.white,
+                          tooltip: 'Search',
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (state.status == FeedStatus.loadingMore)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 20,
+                      child: Center(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.35),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: const Padding(
+                            padding: EdgeInsets.all(AppSpacing.space8),
+                            child: SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }
 
   Widget _buildFeedContent(BuildContext context, FeedState state) {
+    if (_isResettingFeedControllers) {
+      return const FeedShimmer();
+    }
+
     if ((state.status == FeedStatus.initial ||
             state.status == FeedStatus.loading) &&
         state.reels.isEmpty) {
@@ -196,14 +232,31 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
     return RefreshIndicator(
       onRefresh: () async {
         final feedCubit = context.read<FeedCubit>();
+
+        setState(() {
+          _isResettingFeedControllers = true;
+        });
+
+        // Let current reel widgets unmount before disposing controllers.
+        await WidgetsBinding.instance.endOfFrame;
+
         await _preloadManager.resetAndDispose();
         if (!context.mounted) {
           return;
         }
 
         _activeIndex = 0;
+        _feedGeneration++;
         _playbackBootstrapToken = '';
         await feedCubit.refresh();
+
+        if (!mounted) {
+          return;
+        }
+
+        setState(() {
+          _isResettingFeedControllers = false;
+        });
       },
       child: PageView.builder(
         controller: _pageController,
@@ -212,13 +265,37 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
         onPageChanged: (index) => _onPageChanged(context, state, index),
         itemBuilder: (context, index) {
           final reel = state.reels[index];
+          return Builder(
+            builder: (itemContext) {
+              final likeCubit = itemContext.read<LikeCubit>();
+              if (!likeCubit.hasStatus(reel.id)) {
+                unawaited(likeCubit.loadLikeStatus(reel.id));
+              }
 
-          return ReelPageItem(
-            index: index,
-            reel: reel,
-            isActive: index == _activeIndex,
-            preloadManager: _preloadManager,
-            onUsernameTap: () => _openProfileByUsername(context, reel.username),
+              final isLiked = itemContext.select<LikeCubit, bool>(
+                (cubit) => cubit.isLiked(reel.id),
+              );
+              final isLikeLoading = itemContext.select<LikeCubit, bool>(
+                (cubit) => cubit.state.loadingReelIds.contains(reel.id),
+              );
+
+              return ReelPageItem(
+                key: ValueKey('${reel.id}:$index:$_feedGeneration'),
+                index: index,
+                reel: reel,
+                isActive: index == _activeIndex,
+                preloadManager: _preloadManager,
+                onUsernameTap: () =>
+                    _openProfileByUsername(context, reel.username),
+                onLikeTap: () => _onLikeTapped(context, reel.id, isLiked),
+                onCommentTap: () => _onCommentsTapped(context, reel.id),
+                onShareTap: () => _onShareTapped(context),
+                isLiked: isLiked,
+                isLikeLoading: isLikeLoading,
+                likesCount: reel.likesCount,
+                commentsCount: reel.commentsCount,
+              );
+            },
           );
         },
       ),
@@ -298,6 +375,81 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
 
     final encoded = Uri.encodeComponent(sanitized);
     context.push('/profile/$encoded');
+  }
+
+  Future<void> _onLikeTapped(
+    BuildContext context,
+    String reelId,
+    bool isCurrentlyLiked,
+  ) async {
+    final likeCubit = context.read<LikeCubit>();
+    final feedCubit = context.read<FeedCubit>();
+    final now = DateTime.now();
+    final lastTap = _lastLikeTapByReel[reelId];
+
+    if (lastTap != null && now.difference(lastTap) < _likeTapCooldown) {
+      return;
+    }
+
+    if (likeCubit.state.loadingReelIds.contains(reelId)) {
+      return;
+    }
+
+    _lastLikeTapByReel[reelId] = now;
+
+    final optimisticLiked = !isCurrentlyLiked;
+    likeCubit.setOptimisticLike(reelId, isLiked: optimisticLiked);
+    feedCubit.updateLikeCount(reelId, optimisticLiked ? 1 : -1);
+
+    final success = await likeCubit.commitToggle(
+      reelId: reelId,
+      currentlyLiked: isCurrentlyLiked,
+    );
+
+    if (!success) {
+      likeCubit.setOptimisticLike(reelId, isLiked: isCurrentlyLiked);
+      feedCubit.updateLikeCount(reelId, optimisticLiked ? -1 : 1);
+    }
+  }
+
+  void _onShareTapped(BuildContext context) {
+    final now = DateTime.now();
+
+    if (_isShareSnackbarVisible) {
+      return;
+    }
+
+    final lastShownAt = _lastShareSnackbarAt;
+    if (lastShownAt != null &&
+        now.difference(lastShownAt) < _shareSnackbarCooldown) {
+      return;
+    }
+
+    _isShareSnackbarVisible = true;
+    _lastShareSnackbarAt = now;
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context)
+        .showSnackBar(
+          const SnackBar(
+            content: Text('Coming soon...'),
+            duration: Duration(seconds: 2),
+          ),
+        )
+        .closed
+        .whenComplete(() {
+          _isShareSnackbarVisible = false;
+        });
+  }
+
+  Future<void> _onCommentsTapped(BuildContext context, String reelId) async {
+    await CommentsBottomSheet.show(
+      context,
+      reelId: reelId,
+      onCommentPosted: () {
+        context.read<FeedCubit>().incrementCommentsCount(reelId);
+      },
+    );
   }
 }
 

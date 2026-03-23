@@ -9,8 +9,8 @@ class ReelVideoCacheService {
     : _cacheManager = CacheManager(
         Config(
           _cacheKey,
-          stalePeriod: const Duration(days: 7),
-          maxNrOfCacheObjects: 60,
+          stalePeriod: const Duration(days: 3),
+          maxNrOfCacheObjects: 20,
         ),
       );
 
