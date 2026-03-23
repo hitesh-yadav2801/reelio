@@ -9,6 +9,7 @@ import 'package:reelio/features/upload/data/sources/upload_remote_data_source.da
 import 'package:reelio/features/upload/domain/entities/upload_reel_payload.dart';
 import 'package:reelio/features/upload/domain/repositories/upload_repository.dart';
 import 'package:reelio/shared/services/video_thumbnail_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 @LazySingleton(as: UploadRepository)
 class UploadRepositoryImpl implements UploadRepository {
@@ -23,35 +24,49 @@ class UploadRepositoryImpl implements UploadRepository {
     void Function(double progress)? onProgress,
   }) async {
     final reelId = _createReelId(payload.userId);
+    var mediaUploaded = false;
 
     try {
       final thumbnailFile = await _thumbnailService.generateThumbnail(
         videoFile: payload.videoFile,
       );
-      final thumbnailUrl = await _remoteDataSource.uploadThumbnail(
+      final thumbnail = await _remoteDataSource.uploadThumbnail(
         reelId: reelId,
+        userId: payload.userId,
         thumbnailFile: thumbnailFile,
       );
 
-      final videoUrl = await _remoteDataSource.uploadVideo(
+      final video = await _remoteDataSource.uploadVideo(
         reelId: reelId,
+        userId: payload.userId,
         videoFile: payload.videoFile,
         onProgress: onProgress,
       );
+      mediaUploaded = true;
 
       await _remoteDataSource.createReelDocument(
         reelId: reelId,
         payload: payload,
-        videoUrl: videoUrl,
-        thumbnailUrl: thumbnailUrl,
+        videoUrl: video.url,
+        thumbnailUrl: thumbnail.url,
       );
 
       return right(unit);
+    } on StorageException catch (error) {
+      final message = error.message;
+      if (message.contains('Upload canceled by user')) {
+        return left(const StorageFailure('Upload canceled by user.'));
+      }
+      return left(StorageFailure(message));
     } on FirebaseException catch (error) {
-      if (error.plugin == 'firebase_storage') {
-        return left(
-          StorageFailure(error.message ?? 'Unable to upload media right now.'),
+      if (mediaUploaded) {
+        final cleanup = await _cleanupUploadedMedia(
+          userId: payload.userId,
+          reelId: reelId,
         );
+        if (cleanup != null) {
+          return left(cleanup);
+        }
       }
 
       return left(
@@ -62,21 +77,43 @@ class UploadRepositoryImpl implements UploadRepository {
     }
   }
 
+  Future<Failure?> _cleanupUploadedMedia({
+    required String userId,
+    required String reelId,
+  }) async {
+    try {
+      await _remoteDataSource.deleteUploadedMedia(
+        reelId: reelId,
+        userId: userId,
+      );
+      return null;
+    } on Exception catch (error) {
+      return ConsistencyFailure(
+        'Firestore write failed and media rollback failed for $reelId. '
+        'Cleanup required. Details: $error',
+      );
+    }
+  }
+
   @override
   FutureEither<String> uploadThumbnail({
     required String reelId,
+    required String userId,
     required File thumbnailFile,
   }) async {
     try {
-      final url = await _remoteDataSource.uploadThumbnail(
+      final uploaded = await _remoteDataSource.uploadThumbnail(
         reelId: reelId,
+        userId: userId,
         thumbnailFile: thumbnailFile,
       );
-      return right(url);
+      return right(uploaded.url);
     } on FirebaseException catch (error) {
       return left(
         StorageFailure(error.message ?? 'Unable to upload thumbnail.'),
       );
+    } on StorageException catch (error) {
+      return left(StorageFailure(error.message));
     } on Exception catch (error) {
       return left(ServerFailure(error.toString()));
     }

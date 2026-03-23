@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:injectable/injectable.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 @module
 abstract class FirebaseModule {
@@ -17,4 +18,7 @@ abstract class FirebaseModule {
 
   @lazySingleton
   GoogleSignIn get googleSignIn => GoogleSignIn();
+
+  @lazySingleton
+  SupabaseClient get supabaseClient => Supabase.instance.client;
 }

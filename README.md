@@ -7,7 +7,7 @@ This repository follows a feature-first clean architecture with BLoC for state m
 ## Project Snapshot
 
 - Platform: Flutter (Android + iOS)
-- Backend: Firebase Auth, Cloud Firestore, Firebase Storage
+- Backend: Firebase Auth + Cloud Firestore, Supabase Storage
 - Architecture: Feature-first clean architecture (`data` -> `domain` -> `presentation`)
 - State management: `flutter_bloc`
 - Dependency injection: `get_it` + `injectable`
@@ -86,7 +86,8 @@ lib/
 ## Tech Stack
 
 - Flutter SDK: Dart 3
-- Firebase: `firebase_core`, `firebase_auth`, `cloud_firestore`, `firebase_storage`
+- Firebase: `firebase_core`, `firebase_auth`, `cloud_firestore`
+- Supabase: `supabase_flutter`
 - BLoC: `bloc`, `flutter_bloc`
 - DI: `get_it`, `injectable`, `injectable_generator`
 - Routing: `go_router`
@@ -100,8 +101,8 @@ lib/
 3. Firebase project with:
 	- Authentication (Email/Password + Google)
 	- Cloud Firestore
-	- Firebase Storage
-4. Dart/Flutter CLI tools available
+4. Supabase project with Storage buckets
+5. Dart/Flutter CLI tools available
 
 ## Firebase Setup
 
@@ -121,6 +122,62 @@ flutterfire configure
 4. Ensure generated `lib/firebase_options.dart` is present and up to date.
 
 If config files are not committed in your checkout, generate/add them before running.
+
+## Supabase Storage Setup
+
+This project uses Supabase Storage for media files (videos + thumbnails).
+
+1. Create buckets:
+- `reels` (public)
+- `thumbnails` (public)
+
+2. Add storage policies in Supabase SQL Editor:
+
+```sql
+create policy "reels public read"
+on storage.objects
+for select
+using (bucket_id = 'reels');
+
+create policy "reels public write"
+on storage.objects
+for insert
+with check (bucket_id = 'reels');
+
+create policy "reels public update"
+on storage.objects
+for update
+using (bucket_id = 'reels');
+
+create policy "reels public delete"
+on storage.objects
+for delete
+using (bucket_id = 'reels');
+
+create policy "thumbnails public read"
+on storage.objects
+for select
+using (bucket_id = 'thumbnails');
+
+create policy "thumbnails public write"
+on storage.objects
+for insert
+with check (bucket_id = 'thumbnails');
+
+create policy "thumbnails public update"
+on storage.objects
+for update
+using (bucket_id = 'thumbnails');
+
+create policy "thumbnails public delete"
+on storage.objects
+for delete
+using (bucket_id = 'thumbnails');
+```
+
+3. Configure Supabase constants in `lib/core/config/supabase_config.dart`:
+- `url`
+- `anonKey`
 
 ## Install and Run
 
@@ -215,4 +272,10 @@ Use a full restart, not only hot restart, after major generated-file changes.
 1. Recheck `firebase_options.dart`
 2. Recheck platform Firebase config files
 3. Confirm Firebase services are enabled in console
+
+### Supabase upload issues
+
+1. Recheck values in `lib/core/config/supabase_config.dart`
+2. Confirm both buckets exist (`reels`, `thumbnails`)
+3. Confirm storage policies are applied
 

@@ -36,3 +36,8 @@ class CacheFailure extends Failure {
 class ServerFailure extends Failure {
   const ServerFailure(super.message);
 }
+
+/// Failure when data rollback/cleanup could not be completed.
+class ConsistencyFailure extends Failure {
+  const ConsistencyFailure(super.message);
+}
