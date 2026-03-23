@@ -70,11 +70,16 @@ class UploadRemoteDataSourceImpl implements UploadRemoteDataSource {
     final path = _videoPath(userId: userId, reelId: reelId);
     onProgress?.call(0.1);
 
-    await _supabaseClient.storage.from(_reelsBucket).upload(
-      path,
-      videoFile,
-      fileOptions: const FileOptions(contentType: 'video/mp4', upsert: true),
-    );
+    await _supabaseClient.storage
+        .from(_reelsBucket)
+        .upload(
+          path,
+          videoFile,
+          fileOptions: const FileOptions(
+            contentType: 'video/mp4',
+            upsert: true,
+          ),
+        );
 
     _throwIfCanceled();
     onProgress?.call(0.95);
@@ -97,11 +102,16 @@ class UploadRemoteDataSourceImpl implements UploadRemoteDataSource {
     _throwIfCanceled();
     final path = _thumbnailPath(userId: userId, reelId: reelId);
 
-    await _supabaseClient.storage.from(_thumbnailsBucket).upload(
-      path,
-      thumbnailFile,
-      fileOptions: const FileOptions(contentType: 'image/jpeg', upsert: true),
-    );
+    await _supabaseClient.storage
+        .from(_thumbnailsBucket)
+        .upload(
+          path,
+          thumbnailFile,
+          fileOptions: const FileOptions(
+            contentType: 'image/jpeg',
+            upsert: true,
+          ),
+        );
 
     _throwIfCanceled();
     final url = _supabaseClient.storage
@@ -109,9 +119,7 @@ class UploadRemoteDataSourceImpl implements UploadRemoteDataSource {
         .getPublicUrl(path);
 
     if (url.trim().isEmpty) {
-      throw const StorageException(
-        'Unable to resolve uploaded thumbnail URL.',
-      );
+      throw const StorageException('Unable to resolve uploaded thumbnail URL.');
     }
 
     return UploadedMediaObject(path: path, url: url);
@@ -126,9 +134,9 @@ class UploadRemoteDataSourceImpl implements UploadRemoteDataSource {
     final thumbnailPath = _thumbnailPath(userId: userId, reelId: reelId);
 
     await _supabaseClient.storage.from(_reelsBucket).remove([videoPath]);
-    await _supabaseClient.storage
-        .from(_thumbnailsBucket)
-        .remove([thumbnailPath]);
+    await _supabaseClient.storage.from(_thumbnailsBucket).remove([
+      thumbnailPath,
+    ]);
   }
 
   @override
