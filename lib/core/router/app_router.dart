@@ -11,6 +11,7 @@ import 'package:reelio/features/profile/domain/entities/profile_user.dart';
 import 'package:reelio/features/profile/presentation/screens/change_password_screen.dart';
 import 'package:reelio/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:reelio/features/profile/presentation/screens/profile_screen.dart';
+import 'package:reelio/features/profile/presentation/screens/public_profile_screen.dart';
 import 'package:reelio/features/search/presentation/screens/search_screen.dart';
 import 'package:reelio/features/upload/presentation/screens/upload_screen.dart';
 import 'package:reelio/shared/widgets/reelio_app_shell.dart';
@@ -64,6 +65,14 @@ class AppRouter {
         path: '/search',
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const SearchScreen(),
+      ),
+      GoRoute(
+        path: '/profile/:username',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) {
+          final username = state.pathParameters['username'] ?? '';
+          return PublicProfileScreen(username: username);
+        },
       ),
       GoRoute(path: '/', redirect: (context, state) => '/app/feed'),
       StatefulShellRoute.indexedStack(
