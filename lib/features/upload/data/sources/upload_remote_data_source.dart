@@ -2,20 +2,34 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:injectable/injectable.dart';
 import 'package:reelio/features/upload/domain/entities/upload_reel_payload.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+class UploadedMediaObject {
+  const UploadedMediaObject({required this.path, required this.url});
+
+  final String path;
+  final String url;
+}
 
 abstract class UploadRemoteDataSource {
-  Future<String> uploadVideo({
+  Future<UploadedMediaObject> uploadVideo({
     required String reelId,
+    required String userId,
     required File videoFile,
     void Function(double progress)? onProgress,
   });
 
-  Future<String> uploadThumbnail({
+  Future<UploadedMediaObject> uploadThumbnail({
     required String reelId,
+    required String userId,
     required File thumbnailFile,
+  });
+
+  Future<void> deleteUploadedMedia({
+    required String reelId,
+    required String userId,
   });
 
   Future<void> createReelDocument({
@@ -30,12 +44,14 @@ abstract class UploadRemoteDataSource {
 
 @LazySingleton(as: UploadRemoteDataSource)
 class UploadRemoteDataSourceImpl implements UploadRemoteDataSource {
-  UploadRemoteDataSourceImpl(this._storage, this._firestore);
+  UploadRemoteDataSourceImpl(this._supabaseClient, this._firestore);
 
-  final FirebaseStorage _storage;
+  final SupabaseClient _supabaseClient;
   final FirebaseFirestore _firestore;
 
-  UploadTask? _activeUploadTask;
+  static const String _reelsBucket = 'reels';
+  static const String _thumbnailsBucket = 'thumbnails';
+  bool _cancelRequested = false;
 
   CollectionReference<Map<String, dynamic>> get _reelsCollection =>
       _firestore.collection('reels');
@@ -44,48 +60,75 @@ class UploadRemoteDataSourceImpl implements UploadRemoteDataSource {
       _firestore.collection('users');
 
   @override
-  Future<String> uploadVideo({
+  Future<UploadedMediaObject> uploadVideo({
     required String reelId,
+    required String userId,
     required File videoFile,
     void Function(double progress)? onProgress,
   }) async {
-    final reelRef = _storage.ref().child('reels/$reelId.mp4');
-    final uploadTask = reelRef.putFile(videoFile);
-    _activeUploadTask = uploadTask;
+    _throwIfCanceled();
+    final path = _videoPath(userId: userId, reelId: reelId);
+    onProgress?.call(0.1);
 
-    await for (final snapshot in uploadTask.snapshotEvents) {
-      final total = snapshot.totalBytes;
-      final transferred = snapshot.bytesTransferred;
-      if (total <= 0) {
-        onProgress?.call(0);
-        continue;
-      }
+    await _supabaseClient.storage.from(_reelsBucket).upload(
+      path,
+      videoFile,
+      fileOptions: const FileOptions(contentType: 'video/mp4', upsert: true),
+    );
 
-      final value = (transferred / total).clamp(0, 1).toDouble();
-      onProgress?.call(value);
-    }
+    _throwIfCanceled();
+    onProgress?.call(0.95);
 
-    if (uploadTask.snapshot.state != TaskState.success) {
-      throw FirebaseException(
-        plugin: 'firebase_storage',
-        code: 'upload-failed',
-        message: 'Video upload did not complete successfully.',
-      );
+    final url = _supabaseClient.storage.from(_reelsBucket).getPublicUrl(path);
+    if (url.trim().isEmpty) {
+      throw const StorageException('Unable to resolve uploaded video URL.');
     }
 
     onProgress?.call(1);
-    _activeUploadTask = null;
-    return reelRef.getDownloadURL();
+    return UploadedMediaObject(path: path, url: url);
   }
 
   @override
-  Future<String> uploadThumbnail({
+  Future<UploadedMediaObject> uploadThumbnail({
     required String reelId,
+    required String userId,
     required File thumbnailFile,
   }) async {
-    final thumbnailRef = _storage.ref().child('thumbnails/$reelId.jpg');
-    await thumbnailRef.putFile(thumbnailFile);
-    return thumbnailRef.getDownloadURL();
+    _throwIfCanceled();
+    final path = _thumbnailPath(userId: userId, reelId: reelId);
+
+    await _supabaseClient.storage.from(_thumbnailsBucket).upload(
+      path,
+      thumbnailFile,
+      fileOptions: const FileOptions(contentType: 'image/jpeg', upsert: true),
+    );
+
+    _throwIfCanceled();
+    final url = _supabaseClient.storage
+        .from(_thumbnailsBucket)
+        .getPublicUrl(path);
+
+    if (url.trim().isEmpty) {
+      throw const StorageException(
+        'Unable to resolve uploaded thumbnail URL.',
+      );
+    }
+
+    return UploadedMediaObject(path: path, url: url);
+  }
+
+  @override
+  Future<void> deleteUploadedMedia({
+    required String reelId,
+    required String userId,
+  }) async {
+    final videoPath = _videoPath(userId: userId, reelId: reelId);
+    final thumbnailPath = _thumbnailPath(userId: userId, reelId: reelId);
+
+    await _supabaseClient.storage.from(_reelsBucket).remove([videoPath]);
+    await _supabaseClient.storage
+        .from(_thumbnailsBucket)
+        .remove([thumbnailPath]);
   }
 
   @override
@@ -128,12 +171,21 @@ class UploadRemoteDataSourceImpl implements UploadRemoteDataSource {
 
   @override
   Future<void> cancelActiveUpload() async {
-    final uploadTask = _activeUploadTask;
-    if (uploadTask == null) {
-      return;
-    }
+    _cancelRequested = true;
+  }
 
-    await uploadTask.cancel();
-    _activeUploadTask = null;
+  String _videoPath({required String userId, required String reelId}) {
+    return '$userId/$reelId.mp4';
+  }
+
+  String _thumbnailPath({required String userId, required String reelId}) {
+    return '$userId/$reelId.jpg';
+  }
+
+  void _throwIfCanceled() {
+    if (_cancelRequested) {
+      _cancelRequested = false;
+      throw const StorageException('Upload canceled by user.');
+    }
   }
 }

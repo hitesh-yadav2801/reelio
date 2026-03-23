@@ -11,6 +11,7 @@ abstract class UploadRepository {
 
   FutureEither<String> uploadThumbnail({
     required String reelId,
+    required String userId,
     required File thumbnailFile,
   });
 
