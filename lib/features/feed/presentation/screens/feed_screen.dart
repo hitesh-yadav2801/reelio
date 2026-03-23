@@ -178,7 +178,7 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
                             color: Colors.white,
                             tooltip: 'Search',
                           ),
-                          ],
+                        ],
                       ),
                     ),
                     if (state.status == FeedStatus.loadingMore)
@@ -197,7 +197,9 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
                               child: SizedBox(
                                 width: 16,
                                 height: 16,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               ),
                             ),
                           ),
