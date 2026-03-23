@@ -31,6 +31,11 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
   int _feedGeneration = 0;
   String _playbackBootstrapToken = '';
   bool _isResettingFeedControllers = false;
+  final Map<String, DateTime> _lastLikeTapByReel = {};
+  static const Duration _likeTapCooldown = Duration(milliseconds: 900);
+  static const Duration _shareSnackbarCooldown = Duration(seconds: 2);
+  DateTime? _lastShareSnackbarAt;
+  bool _isShareSnackbarVisible = false;
 
   @override
   void initState() {
@@ -284,6 +289,7 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
                     _openProfileByUsername(context, reel.username),
                 onLikeTap: () => _onLikeTapped(context, reel.id, isLiked),
                 onCommentTap: () => _onCommentsTapped(context, reel.id),
+                onShareTap: () => _onShareTapped(context),
                 isLiked: isLiked,
                 isLikeLoading: isLikeLoading,
                 likesCount: reel.likesCount,
@@ -378,10 +384,18 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
   ) async {
     final likeCubit = context.read<LikeCubit>();
     final feedCubit = context.read<FeedCubit>();
+    final now = DateTime.now();
+    final lastTap = _lastLikeTapByReel[reelId];
+
+    if (lastTap != null && now.difference(lastTap) < _likeTapCooldown) {
+      return;
+    }
 
     if (likeCubit.state.loadingReelIds.contains(reelId)) {
       return;
     }
+
+    _lastLikeTapByReel[reelId] = now;
 
     final optimisticLiked = !isCurrentlyLiked;
     likeCubit.setOptimisticLike(reelId, isLiked: optimisticLiked);
@@ -396,6 +410,36 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
       likeCubit.setOptimisticLike(reelId, isLiked: isCurrentlyLiked);
       feedCubit.updateLikeCount(reelId, optimisticLiked ? -1 : 1);
     }
+  }
+
+  void _onShareTapped(BuildContext context) {
+    final now = DateTime.now();
+
+    if (_isShareSnackbarVisible) {
+      return;
+    }
+
+    final lastShownAt = _lastShareSnackbarAt;
+    if (lastShownAt != null &&
+        now.difference(lastShownAt) < _shareSnackbarCooldown) {
+      return;
+    }
+
+    _isShareSnackbarVisible = true;
+    _lastShareSnackbarAt = now;
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context)
+        .showSnackBar(
+          const SnackBar(
+            content: Text('Coming soon...'),
+            duration: Duration(seconds: 2),
+          ),
+        )
+        .closed
+        .whenComplete(() {
+          _isShareSnackbarVisible = false;
+        });
   }
 
   Future<void> _onCommentsTapped(BuildContext context, String reelId) async {

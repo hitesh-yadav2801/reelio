@@ -10,6 +10,7 @@ class ReelOverlay extends StatelessWidget {
     required this.onUsernameTap,
     required this.onLikeTap,
     required this.onCommentTap,
+    required this.onShareTap,
     required this.isLiked,
     required this.likesCount,
     required this.commentsCount,
@@ -23,6 +24,7 @@ class ReelOverlay extends StatelessWidget {
   final VoidCallback onUsernameTap;
   final VoidCallback onLikeTap;
   final VoidCallback onCommentTap;
+  final VoidCallback onShareTap;
   final bool isLiked;
   final bool isLikeLoading;
   final int likesCount;
@@ -50,6 +52,7 @@ class ReelOverlay extends StatelessWidget {
                   commentsCount: commentsCount,
                   onLikeTap: onLikeTap,
                   onCommentTap: onCommentTap,
+                  onShareTap: onShareTap,
                 ),
               ],
             ),
@@ -112,6 +115,7 @@ class _ActionColumn extends StatelessWidget {
     required this.commentsCount,
     required this.onLikeTap,
     required this.onCommentTap,
+    required this.onShareTap,
   });
 
   final bool isLiked;
@@ -120,6 +124,7 @@ class _ActionColumn extends StatelessWidget {
   final int commentsCount;
   final VoidCallback onLikeTap;
   final VoidCallback onCommentTap;
+  final VoidCallback onShareTap;
 
   @override
   Widget build(BuildContext context) {
@@ -141,7 +146,11 @@ class _ActionColumn extends StatelessWidget {
           onTap: onCommentTap,
         ),
         const SizedBox(height: AppSpacing.space16),
-        const _ActionItem(icon: Icons.ios_share_rounded, label: 'Share'),
+        _ActionItem(
+          icon: Icons.ios_share_rounded,
+          label: 'Share',
+          onTap: onShareTap,
+        ),
       ],
     );
   }

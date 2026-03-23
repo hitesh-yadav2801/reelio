@@ -17,6 +17,7 @@ class ReelPageItem extends StatefulWidget {
     required this.onUsernameTap,
     required this.onLikeTap,
     required this.onCommentTap,
+    required this.onShareTap,
     required this.isLiked,
     required this.likesCount,
     required this.commentsCount,
@@ -31,6 +32,7 @@ class ReelPageItem extends StatefulWidget {
   final VoidCallback onUsernameTap;
   final VoidCallback onLikeTap;
   final VoidCallback onCommentTap;
+  final VoidCallback onShareTap;
   final bool isLiked;
   final bool isLikeLoading;
   final int likesCount;
@@ -183,6 +185,7 @@ class _ReelPageItemState extends State<ReelPageItem> {
           onUsernameTap: widget.onUsernameTap,
           onLikeTap: widget.onLikeTap,
           onCommentTap: widget.onCommentTap,
+          onShareTap: widget.onShareTap,
           isLiked: widget.isLiked,
           isLikeLoading: widget.isLikeLoading,
           likesCount: widget.likesCount,
